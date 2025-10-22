@@ -1,7 +1,7 @@
 # Kyun CLI (Beta)
 
 A **command-line interface** for using [kyun.host](https://kyun.host).  
-> **Note:** This project is currently in **beta**. OS installation, Stripe payments, account creation, updating contact info are not yet supported.
+> **Note:** This project is currently in **beta**. OS installation, Stripe payments, and account creation are not yet supported.
 
 ---
 
@@ -67,6 +67,28 @@ kyun account ssh rename <key_id> "New Name"
 
 # Delete SSH key
 kyun account ssh delete <key_id>
+```
+
+### Contact Information Management
+
+```bash
+# Get contact information
+kyun account contact get
+
+# Update email address
+kyun account contact update --email "your@email.com"
+
+# Update Matrix ID
+kyun account contact update --matrix "@user:matrix.org"
+
+# Update both email and Matrix
+kyun account contact update --email "your@email.com" --matrix "@user:matrix.org"
+
+# Link Telegram account
+kyun account contact telegram link --code "ABC123"
+
+# Unlink Telegram account
+kyun account contact telegram unlink
 ```
 
 ### Danbo Management
@@ -294,7 +316,6 @@ Account information is stored in `~/.config/kyuncli/config.json`. This includes:
 - [ ] Add Stripe support
 - [ ] Add serial access
 - [ ] Allow sending chat messages
-- [ ] Add ability to add contact info to account
 - [ ] Allow fetching of danbo usage stats like cpu, ram, network
 
 ## License
