@@ -8,7 +8,7 @@ A **command-line interface** for using [kyun.host](https://kyun.host).
 ## Installation
 
 ```bash
-git clone https://github.com/nthpyrodev/kyuncli.git
+git clone https://git.kyun.host/nthpyrodev/kyuncli.git
 cd kyuncli
 python3 -m venv .venv
 source .venv/bin/activate
