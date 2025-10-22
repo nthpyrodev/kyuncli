@@ -1,93 +1,302 @@
-# Kyun CLI
+# Kyun CLI (Beta)
 
+A **command-line interface** for using [kyun.host](https://kyun.host).  
+> **Note:** This project is currently in **beta**. OS installation, Stripe payments, account creation, updating contact info are not yet supported.
 
-
-## Getting started
-
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
-
-```
-cd existing_repo
-git remote add origin https://git.kyun.host/nthpyrodev/kyuncli.git
-git branch -M master
-git push -uf origin master
-```
-
-## Integrate with your tools
-
-- [ ] [Set up project integrations](https://git.kyun.host/nthpyrodev/kyuncli/-/settings/integrations)
-
-## Collaborate with your team
-
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
-
-## Test and Deploy
-
-Use the built-in continuous integration in GitLab.
-
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
-
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+---
 
 ## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+
+```bash
+git clone https://github.com/nthpyrodev/kyuncli.git
+cd kyuncli
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
+
+### Dependencies
+
+The project requires Python 3.10+ and the following dependencies:
+
+- `click`
+- `httpx`
+- `requests`
+- `qrcode`
+- `python-dotenv`
+
+### Before You Use
+
+- Until account creation functionality is added, create an account at Kyun.host before using this CLI.
 
 ## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+### Account Management
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+```bash
+# Login to your account to create the API to use
+kyun account setup
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+# Switch between accounts
+kyun account login <hash>
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+# List all accounts
+kyun account list
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+# Check balance
+kyun account balance
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+# Remove an account
+kyun account remove <hash>
+```
+
+### SSH Key Management
+
+```bash
+# List SSH keys
+kyun account ssh list
+
+# Add SSH key from file
+kyun account ssh add --file ~/.ssh/id_rsa.pub --name "My Key"
+
+# Add SSH key directly
+kyun account ssh add --key "ssh-rsa AAAAB3..." --name "My Key"
+
+# Rename SSH key
+kyun account ssh rename <key_id> "New Name"
+
+# Delete SSH key
+kyun account ssh delete <key_id>
+```
+
+### Danbo Management
+
+```bash
+# List all Danbos
+kyun danbo list
+
+# Get detailed Danbo info
+kyun danbo get <danbo_id>
+
+# Buy a new Danbo
+kyun danbo buy
+
+# Rename a Danbo
+kyun danbo rename <danbo_id> "New Name"
+
+# Delete a Danbo (Irreversible)
+kyun danbo management delete <danbo_id>
+
+# Cancel a Danbo (deleted on next renewal)
+kyun danbo management cancel <danbo_id>
+```
+
+### Danbo Power Management
+
+```bash
+# Start a Danbo
+kyun danbo power start <danbo_id>
+
+# Stop a Danbo
+kyun danbo power stop <danbo_id>
+
+# Reboot a Danbo
+kyun danbo power reboot <danbo_id>
+
+# Graceful shutdown
+kyun danbo power shutdown <danbo_id>
+```
+
+### Danbo Specs Management
+
+```bash
+# View current specs
+kyun danbo get <danbo_id>
+
+# Check max upgrade options
+kyun danbo specs max-upgrade <danbo_id>
+
+# Change specs
+kyun danbo specs change <danbo_id>
+```
+
+### Danbo IP Management
+
+```bash
+# Show danbo information
+kyun danbo get <danbo_id>
+
+# Add IPv4
+kyun danbo ip add <danbo_id>
+
+# Remove IPv4
+kyun danbo ip remove <danbo_id> <ip_address>
+
+# Set primary IP
+kyun danbo ip set-primary-ip <danbo_id> <ip_address>
+```
+
+### Danbo SSH Management
+
+```bash
+# View authorized keys
+kyun danbo ssh get-authorized <danbo_id>
+
+# Set authorized keys from account (Replaces existing)
+kyun danbo ssh set-authorized <danbo_id> --from-account
+
+# Set authorized keys from file (Replaces existing)
+kyun danbo ssh set-authorized <danbo_id> --file ~/.ssh/authorized_keys
+
+# Add key to authorized keys
+kyun danbo ssh add-to-authorized <danbo_id> --key "ssh-rsa AAAAB3..."
+
+# Remove key from authorized keys
+kyun danbo ssh remove-from-authorized <danbo_id> --key "ssh-rsa AAAAB3.."
+
+# Get SSH host keys
+kyun danbo ssh get-host-keys <danbo_id>
+```
+
+### Danbo Bandwidth Management
+
+```bash
+# Check current bandwidth limit
+kyun danbo bandwidth get <danbo_id>
+
+# Set bandwidth limit (--limit flag optional)
+kyun danbo bandwidth set <danbo_id> --limit 100
+
+# Clear bandwidth limit
+kyun danbo bandwidth clear <danbo_id>
+```
+
+### Danbo Subdomain Management
+
+```bash
+# List subdomains
+kyun danbo subdomains list <danbo_id>
+
+# Create subdomain
+kyun danbo subdomains create <danbo_id> --name "subdomain" --domain "kyun.li" --ip "ip_address"
+
+# Delete subdomain
+kyun danbo subdomains delete <danbo_id> <subdomain_id>
+```
+
+### Danbo Brick Management
+
+```bash
+# List attached Bricks
+kyun danbo bricks list <danbo_id>
+
+# Attach Brick to Danbo
+kyun danbo bricks attach <danbo_id> <brick_id>
+
+# Detach Brick from Danbo
+kyun danbo bricks detach <danbo_id> <brick_id>
+```
+
+### Brick Storage Management
+
+```bash
+# List all Bricks
+kyun brick list
+
+# Get Brick details
+kyun brick get <brick_id>
+
+# Buy a new Brick
+kyun brick buy
+
+# Grow a Brick
+kyun brick grow <brick_id>
+
+# Check max growth
+kyun brick max-grow <brick_id>
+
+# Delete a Brick (Irreversible)
+kyun brick delete <brick_id>
+
+# Unsuspend a Brick
+kyun brick unsuspend <brick_id>
+```
+
+### Deposit Management
+
+```bash
+# View exchange rates
+kyun deposit rates
+
+# List pending deposits
+kyun deposit pending
+
+# Create new deposit
+kyun deposit create
+
+# Get deposit info
+kyun deposit get <deposit_id>
+
+# Check deposit status
+kyun deposit status <deposit_id>
+```
+
+### Support Chat
+
+```bash
+# List all chats
+kyun chat list
+
+# Create new chat
+kyun chat create
+
+# Create chat using ultra private mode
+kyun chat create --private
+
+# View chat messages
+kyun chat open <chat_id>
+
+# Delete chat
+kyun chat delete <chat_id>
+
+# Check online staff
+kyun chat staff
+
+# Enable ultra private mode
+kyun chat privacy enable <chat_id>
+
+# Disable ultra private mode
+kyun chat privacy disable <chat_id>
+```
+
+## Configuration
+
+Account information is stored in `~/.config/kyuncli/config.json`. This includes:
+
+- Account hash
+- API key
+- User ID
+
+## Development
+
+### Contributing
+
+1. Open an issue first
+2. Fork the repository
+3. Create a branch
+4. Make your changes
+5. Submit a pull request
+
+## TODO
+
+- [ ] Add support for installing OS to danbo
+- [ ] Store API in keyring
+- [ ] Add Stripe support
+- [ ] Add serial access
+- [ ] Allow sending chat messages
+- [ ] Add ability to add contact info to account
+- [ ] Allow fetching of danbo usage stats like cpu, ram, network
 
 ## License
-For open source projects, say how it is licensed.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+This project is licensed under the MIT License, see the LICENSE file for details.
