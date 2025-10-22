@@ -86,6 +86,31 @@ class KyunAPI:
         resp.raise_for_status()
         return resp.status_code
 
+    def get_user_contact(self):
+        resp = self.client.get("/user/contact")
+        resp.raise_for_status()
+        return resp.json()
+
+    def update_user_contact(self, email: str | None = None, matrix: str | None = None):
+        payload = {}
+        if email is not None:
+            payload["email"] = email
+        if matrix is not None:
+            payload["matrix"] = matrix
+        resp = self.client.patch("/user/contact", json=payload)
+        resp.raise_for_status()
+        return resp.status_code
+
+    def link_telegram(self, code: str):
+        resp = self.client.put("/user/contact/telegram", json=code)
+        resp.raise_for_status()
+        return resp.status_code
+
+    def unlink_telegram(self):
+        resp = self.client.delete("/user/contact/telegram")
+        resp.raise_for_status()
+        return resp.status_code
+
     def get_deposit_rates(self):
         resp = self.client.get("/deposits/rates")
         resp.raise_for_status()

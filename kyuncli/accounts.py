@@ -183,3 +183,102 @@ def ssh_delete(key_id):
         click.echo(f"SSH key {key_id} deleted.")
     except Exception as e:
         click.echo(f"Failed to delete SSH key: {e}")
+
+
+@account.group(invoke_without_command=True)
+@click.pass_context
+def contact(ctx):
+    """Manage account contact information."""
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
+
+
+@contact.command("get")
+def contact_get():
+    """Get account contact info (email, matrix, telegram)."""
+    api = get_api_client()
+    if not api:
+        return
+    try:
+        info = api.get_user_contact()
+    except Exception as e:
+        click.echo(f"Failed to fetch contact info: {e}")
+        return
+
+    def to_yes_no(value):
+        return "Yes" if bool(value) else "No"
+
+    email = info.get("email") or "-"
+    matrix = info.get("matrix") or "-"
+    telegram = to_yes_no(info.get("telegram", False))
+
+    click.echo(f"Email: {email}")
+    click.echo(f"Matrix: {matrix}")
+    click.echo(f"Telegram linked: {telegram}")
+
+
+@contact.command("update")
+@click.option("--email", help="Email address to set")
+@click.option("--matrix", help="Matrix ID to set")
+def contact_update(email, matrix):
+    """Update contact info. Provide one or both of --email/--matrix."""
+    if email is None and matrix is None:
+        click.echo("Provide --email and/or --matrix.")
+        return
+
+    api = get_api_client()
+    if not api:
+        return
+    try:
+        api.update_user_contact(email=email, matrix=matrix)
+        click.echo("Contact info updated.")
+    except Exception as e:
+        error_msg = str(e)
+        if "400" in error_msg:
+            if email is not None:
+                click.echo("Invalid email address.")
+            elif matrix is not None:
+                click.echo("Invalid Matrix account.")
+            else:
+                click.echo("Invalid contact information.")
+        else:
+            click.echo(f"Failed to update contact info: {error_msg}")
+
+
+@contact.group(name="telegram", invoke_without_command=True)
+@click.pass_context
+def contact_telegram(ctx):
+    """Link or unlink your Telegram account."""
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
+
+
+@contact_telegram.command("link")
+@click.option("--code", prompt=True, help="Link code from @KyunNotificationsBot")
+def telegram_link(code):
+    """Link your Telegram using the code from @KyunNotificationsBot."""
+    api = get_api_client()
+    if not api:
+        return
+    try:
+        api.link_telegram(code)
+        click.echo("Telegram linked.")
+    except Exception as e:
+        error_msg = str(e)
+        if "400" in error_msg:
+            click.echo("Invalid Telegram link code.")
+        else:
+            click.echo(f"Failed to link Telegram: {error_msg}")
+
+
+@contact_telegram.command("unlink")
+def telegram_unlink():
+    """Unlink your Telegram account."""
+    api = get_api_client()
+    if not api:
+        return
+    try:
+        api.unlink_telegram()
+        click.echo("Telegram unlinked.")
+    except Exception as e:
+        click.echo(f"Failed to unlink Telegram: {e}")
