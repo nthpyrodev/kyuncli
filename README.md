@@ -1,7 +1,7 @@
 # Kyun CLI (Beta)
 
 A **command-line interface** for using [kyun.host](https://kyun.host).  
-> **Note:** This project is currently in **beta**. OS installation, Stripe payments, and account creation are not yet supported.
+> **Note:** This project is currently in **beta**. OS installation and Stripe payments are not yet supported.
 
 ---
 
@@ -25,20 +25,19 @@ The project requires Python 3.10+ and the following dependencies:
 - `qrcode`
 - `python-dotenv`
 
-### Before You Use
-
-- Until account creation functionality is added, create an account at Kyun.host before using this CLI.
-
 ## Usage
 
 ### Account Management
 
 ```bash
+# Create a new account
+kyun account create
+
 # Login to your account to create the API to use
-kyun account setup
+kyun account login
 
 # Switch between accounts
-kyun account login <hash>
+kyun account switch <hash>
 
 # List all accounts
 kyun account list
@@ -89,6 +88,13 @@ kyun account contact telegram link --code "ABC123"
 
 # Unlink Telegram account
 kyun account contact telegram unlink
+```
+
+### 2FA/OTP Management
+
+```bash
+# Check if 2FA is enabled
+kyun account otp status
 ```
 
 ### Danbo Management
@@ -299,15 +305,9 @@ Account information is stored in `~/.config/kyuncli/config.json`. This includes:
 - API key
 - User ID
 
-## Development
+## Issues
 
-### Contributing
-
-1. Open an issue first
-2. Fork the repository
-3. Create a branch
-4. Make your changes
-5. Submit a pull request
+If you find a bug, want to request a feature, or anything else, please send me a message or create an issue here: https://github.com/nthpyrodev/kyuncli
 
 ## TODO
 
@@ -317,7 +317,4 @@ Account information is stored in `~/.config/kyuncli/config.json`. This includes:
 - [ ] Add serial access
 - [ ] Allow sending chat messages
 - [ ] Allow fetching of danbo usage stats like cpu, ram, network
-
-## License
-
-This project is licensed under the MIT License, see the LICENSE file for details.
+- [ ] Add support for enabling/disabling 2FA

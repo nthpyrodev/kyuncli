@@ -7,3 +7,7 @@ dependencies = ["click", "httpx", "python-dotenv", "qrcode", "requests"]
 
 [project.scripts]
 kyun = "kyuncli.cli:cli"
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"

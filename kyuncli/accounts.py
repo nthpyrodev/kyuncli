@@ -1,23 +1,85 @@
 import click
+import hashlib
+import time
 from .api import KyunAPI
 from .config import add_or_update_account, set_active_account, remove_account, list_accounts
 from .utils import get_api_client
 
 
+def solve_pow(challenge: str, difficulty: int) -> str:
+    start_time = time.time()
+    timeout = 120
+    proof = 0
+    
+    while True:
+        if time.time() - start_time > timeout:
+            click.echo("Proof of work challenge exceeded max time. Please try again.")
+            raise SystemExit(1)
+            
+        test_string = challenge + str(proof)
+        hash_result = hashlib.sha256(test_string.encode()).hexdigest()
+        if hash_result.startswith('0' * difficulty):
+            return str(proof)
+        proof += 1
+
+
 @click.group(invoke_without_command=True)
 @click.pass_context
 def account(ctx):
-    """Manage accounts and API keys."""
+    """Manage accounts."""
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
+
+@account.command()
+@click.option("--password", prompt=True, hide_input=True, confirmation_prompt=True, help="Password for the new account")
+@click.option("--label", prompt="Label for new API key", default="kyuncli-key", help="Label to assign to the created API key")
+def create(password, label):
+    """Create a new Kyun account."""
+    try:
+        click.echo("Creating new account...")
+        click.echo("Fetching proof-of-work challenge...")
+        
+        api_temp = KyunAPI(temp_token=None)
+        pow_data = api_temp.get_pow_challenge()
+        challenge = pow_data["challenge"]
+        difficulty = pow_data["difficulty"]
+        signature = pow_data["signature"]
+        
+        click.echo("Solving proof-of-work challenge (this may take a moment)...")
+        proof = solve_pow(challenge, difficulty)
+        
+        account_hash = api_temp.create_account(password, challenge, signature, proof)
+        
+        click.echo(f"\nAccount created successfully.")
+        click.echo(f"Account hash: {account_hash}")
+        click.echo("\nLogging in and creating API key...")
+        
+        token = api_temp.login(account_hash, password, None)
+        api_with_token = KyunAPI(temp_token=token)
+        
+        api_key = api_with_token.create_api_key(label)
+        
+        user_info = api_with_token.get_user_info()
+        user_id = user_info["id"]
+        
+        add_or_update_account(account_hash, api_key, user_id)
+        click.echo(f"\nSetup complete. Account {account_hash} is now active.")
+        click.echo(f"API key has been saved. Active account switched to {account_hash}.")
+        
+    except Exception as e:
+        error_msg = str(e)
+        if "400" in error_msg:
+            click.echo("Account creation failed: Password is too short (<5) or has been found in a data breach. Please use a different, stronger password.")
+        else:
+            click.echo(f"Account creation failed: {error_msg}")
 
 @account.command()
 @click.option("--hash", prompt=True, hide_input=False, help="Your account hash")
 @click.option("--password", prompt=True, hide_input=True, help="Your account password")
 @click.option("--otp", prompt="OTP code (if 2FA enabled)", default="", show_default=False, help="OTP code if your account has 2FA enabled")
 @click.option("--label", prompt="Label for new API key", default="kyuncli-key", help="Label to assign to the created API key")
-def setup(hash, password, otp, label):
-    """Setup account: login and create API key."""
+def login(hash, password, otp, label):
+    """Login to account: authenticate and create API key."""
     try:
         api_temp = KyunAPI(temp_token=None)
         token = api_temp.login(hash, password, otp if otp else None)
@@ -28,39 +90,33 @@ def setup(hash, password, otp, label):
         user_id = user_info["id"]
         
         add_or_update_account(hash, api_key, user_id)
-        click.echo(f"Setup complete. API key saved and active for {hash}.")
+        click.echo(f"Login complete. API key saved and active for {hash}.")
     except Exception as e:
         error_msg = str(e)
-        if error_msg == "Wrong password":
-            click.echo("Login failed: Wrong password.")
-        elif error_msg == "Invalid 2FA code":
-            click.echo("Login failed: Invalid 2FA code.")
-        elif error_msg == "OTP is required":
-            click.echo("Login failed: 2FA is enabled but no OTP code provided.")
-        elif error_msg == "User not found":
+        if "401" in error_msg:
+            if "Wrong password" in error_msg:
+                click.echo("Login failed: Wrong password.")
+            elif "Invalid 2FA code" in error_msg:
+                click.echo("Login failed: Invalid 2FA code.")
+            else:
+                click.echo("Login failed: Authentication failed.")
+        elif "404" in error_msg:
             click.echo("Login failed: User not found.")
+        elif "418" in error_msg:
+            click.echo("Login failed: 2FA is enabled but no OTP code provided.")
         else:
-            click.echo(f"Setup failed: {error_msg}")
+            click.echo(f"Login failed: {error_msg}")
 
 @account.command()
 @click.argument("hash_")
-def login(hash_):
-    """Switch active account or setup if new."""
+def switch(hash_):
+    """Switch active account."""
     found = set_active_account(hash_)
     if found:
         click.echo(f"Switched active account to {hash_}.")
         return
 
-    click.echo(f"Account {hash_} not found. Performing setup...")
-    password = click.prompt("Password", hide_input=True)
-    otp = click.prompt("OTP code (if 2FA enabled)", default="", show_default=False)
-    label = click.prompt("Label for new API key", default="kyuncli-key")
-    api_temp = KyunAPI(temp_token=None)
-    token = api_temp.login(hash_, password, otp if otp else None)
-    api_with_token = KyunAPI(temp_token=token)
-    api_key = api_with_token.create_api_key(label)
-    add_or_update_account(hash_, api_key)
-    click.echo(f"Setup complete. API key saved and active for {hash_}.")
+    click.echo(f"Account {hash_} not found. Please setup with 'kyun account login' or create with 'kyun account create'.")
 
 @account.command(name="list")
 def account_list():
@@ -92,6 +148,28 @@ def balance():
     info = api.get_user_info()
     eur_balance = info.get('balance', 0) / 100
     click.echo(f"Balance: €{eur_balance:,.2f}")
+
+@account.group(invoke_without_command=True)
+@click.pass_context
+def otp(ctx):
+    """Manage 2FA settings."""
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
+
+@otp.command()
+def status():
+    """Check if 2FA is enabled."""
+    api = get_api_client()
+    if not api:
+        return
+    try:
+        info = api.get_otp_status()
+        if info == True:
+            click.echo(f"2FA is enabled.")
+        elif info == False:
+            click.echo(f"2FA is not enabled")
+    except Exception as e:
+        click.echo(f"Failed to check 2FA status: {e}")
 
 @account.group(invoke_without_command=True)
 @click.pass_context

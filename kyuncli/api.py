@@ -15,32 +15,27 @@ class KyunAPI:
 
         self.client = httpx.Client(base_url=API_BASE, headers=self.headers, timeout=httpx.Timeout(connect=20.0, read=20.0, write=10.0, pool=5.0))
 
+    def get_pow_challenge(self):
+        resp = self.client.get("/etc/powChallenge")
+        resp.raise_for_status()
+        return resp.json()
+
+    def create_account(self, password: str, challenge: str, signature: str, proof: str) -> str:
+        payload = {"password": password, "pow": {"challenge": challenge, "signature": signature, "proof": proof}}
+        resp = self.client.put("/user", json=payload)
+        resp.raise_for_status()
+        token = resp.text.strip('"')
+        temp_api = KyunAPI(temp_token=token)
+        user_info = temp_api.get_user_info()
+        return user_info["accountHash"]
+
     def login(self, hash_: str, password: str, otp: str | None = None) -> str:
         headers = self.headers.copy()
         if otp and otp.strip():
             headers["X-OTP-Code"] = otp.strip()
-        
         resp = self.client.post("/user/logIn", json={"hash": hash_, "password": password}, headers=headers)
-        
-        if resp.status_code == 401:
-            try:
-                error_data = resp.json()
-                message = error_data.get("message", "")
-                if message == "Wrong password":
-                    raise Exception("Wrong password")
-                elif message == "Invalid 2FA code":
-                    raise Exception("Invalid 2FA code")
-            except Exception as e:
-                if str(e) in ["Wrong password", "Invalid 2FA code"]:
-                    raise
-            except:
-                pass
-        elif resp.status_code == 404:
-            raise Exception("User not found")
-        elif resp.status_code == 418:
-            raise Exception("OTP is required")
-        
-        resp.raise_for_status()
+        if not resp.is_success:
+            raise Exception(f"{resp.status_code}:{resp.text}")
         return resp.text.strip('"')
 
     def get_user_info(self):
@@ -188,7 +183,6 @@ class KyunAPI:
         return resp.status_code
     
     def set_danbo_primary_ip(self, danbo_id: str, ip: str) -> bool:
-        """Set a specific IPv4 as the primary IP for this Danbo."""
         resp = self.client.post(f"/services/danbo/{danbo_id}/ips/{ip}/primary")
         resp.raise_for_status()
         return resp.status_code == 200
@@ -206,13 +200,11 @@ class KyunAPI:
 
     
     def get_datacenter_prices(self, datacenter_id: str):
-        """Fetch prices for a specific datacenter."""
         resp = self.client.get(f"/datacenters/{datacenter_id}/prices")
         resp.raise_for_status()
         return resp.json()
     
     def get_datacenter_available_specs(self, datacenter_id: str, cores: int = None, ram: float = None, disk: int = None):
-        """Get available specs for a datacenter."""
         params = {}
         if cores is not None:
             params["cores"] = str(cores)
@@ -243,13 +235,11 @@ class KyunAPI:
         return resp.status_code == 200
 
     def get_danbo_bandwidth_limit(self, danbo_id: str) -> float:
-        """Fetch the current bandwidth limit (in Mb/s)."""
         resp = self.client.get(f"/services/danbo/{danbo_id}/bwLimit")
         resp.raise_for_status()
         return resp.json()
 
     def set_danbo_bandwidth_limit(self, danbo_id: str, limit: float) -> bool:
-        """Set a new bandwidth limit (in Mb/s)."""
         payload = {"limit": limit}
         resp = self.client.patch(
             f"/services/danbo/{danbo_id}/bwLimit",
@@ -260,25 +250,21 @@ class KyunAPI:
         return resp.status_code == 200
 
     def clear_danbo_bandwidth_limit(self, danbo_id: str) -> bool:
-        """Remove the bandwidth limit from the Danbo."""
         resp = self.client.delete(f"/services/danbo/{danbo_id}/bwLimit")
         resp.raise_for_status()
         return resp.status_code == 200
 
     def get_danbo_authorized_keys(self, danbo_id: str) -> str:
-        """Get SSH authorized keys for a Danbo (newline separated)."""
         resp = self.client.get(f"/services/danbo/{danbo_id}/authorizedKeys")
         resp.raise_for_status()
         return resp.text.strip('"')
 
     def set_danbo_authorized_keys(self, danbo_id: str, keys: str) -> bool:
-        """Set SSH authorized keys for a Danbo (newline separated)."""
         resp = self.client.put(f"/services/danbo/{danbo_id}/authorizedKeys", json=keys)
         resp.raise_for_status()
         return resp.status_code == 200
 
     def get_danbo_host_keys(self, danbo_id: str):
-        """Get SSH host keys for a Danbo."""
         resp = self.client.get(f"/services/danbo/{danbo_id}/hostKeys")
         resp.raise_for_status()
         return resp.json()
@@ -335,7 +321,6 @@ class KyunAPI:
         return resp.status_code
 
     def buy_danbo(self, datacenter: str, cores: int, ram: float, disk: int, fours: int = 0):
-        """Buy a new Danbo with specified specs."""
         payload = {
             "datacenter": datacenter,
             "specs": {"cores": cores, "ram": ram, "disk": disk},
@@ -346,7 +331,6 @@ class KyunAPI:
         return resp.text.strip('"')
 
     def delete_danbo(self, danbo_id: str, otp: str | None):
-        """Delete a Danbo. Requires OTP code."""
         headers = {k: v for k, v in self.headers.items() if k != "Content-Type"}
         if otp:
             headers["X-OTP-Code"] = otp
@@ -357,74 +341,67 @@ class KyunAPI:
         return resp.status_code
 
     def cancel_danbo(self, danbo_id: str):
-        """Cancel a Danbo (delete on next renewal)."""
         resp = self.client.post(f"/services/danbo/{danbo_id}/billing/cancel")
         resp.raise_for_status()
         return resp.status_code
 
     def resume_danbo(self, danbo_id: str):
-        """Resume a cancelled Danbo."""
         resp = self.client.post(f"/services/danbo/{danbo_id}/billing/resume")
         resp.raise_for_status()
         return resp.status_code
 
     def pay_to_unsuspend_danbo(self, danbo_id: str):
-        """Pay to unsuspend a Danbo."""
         resp = self.client.post(f"/services/danbo/{danbo_id}/billing/payToUnsuspend")
         resp.raise_for_status()
         return resp.status_code
 
     def rename_danbo(self, danbo_id: str, new_name: str):
-        """Rename a Danbo."""
         resp = self.client.patch(f"/services/danbo/{danbo_id}/name", json=new_name)
         resp.raise_for_status()
         return resp.status_code
 
     def get_chats(self):
-        """Get all support chats."""
         resp = self.client.get("/chats")
         resp.raise_for_status()
         return resp.json()
 
     def create_chat(self, ultra_private_mode: bool = False):
-        """Create a new support chat."""
         resp = self.client.put("/chats", json={"ultraPrivateMode": ultra_private_mode})
         resp.raise_for_status()
         return resp.text.strip('"')
 
     def get_chat_messages(self, chat_id: str):
-        """Get messages from a support chat."""
         resp = self.client.get(f"/chats/{chat_id}/messages")
         resp.raise_for_status()
         return resp.json()
 
 
     def mark_chat_read(self, chat_id: str):
-        """Mark a chat as read."""
         resp = self.client.post(f"/chats/{chat_id}/read")
         resp.raise_for_status()
         return resp.status_code
 
     def delete_chat(self, chat_id: str):
-        """Delete a support chat."""
         resp = self.client.delete(f"/chats/{chat_id}")
         resp.raise_for_status()
         return resp.status_code
 
     def get_active_staff_count(self):
-        """Get count of online support staff."""
         resp = self.client.get("/chats/activeStaff")
         resp.raise_for_status()
         return resp.json()
 
     def enable_ultra_private_mode(self, chat_id: str):
-        """Enable ultra private mode for a chat."""
         resp = self.client.post(f"/chats/{chat_id}/enableUltraPrivateMode")
         resp.raise_for_status()
         return resp.status_code
 
     def disable_ultra_private_mode(self, chat_id: str):
-        """Disable ultra private mode for a chat."""
         resp = self.client.post(f"/chats/{chat_id}/disableUltraPrivateMode")
         resp.raise_for_status()
         return resp.status_code
+
+    def get_otp_status(self):
+        resp = self.client.get("/user/otp")
+        resp.raise_for_status()
+        return resp.json()
