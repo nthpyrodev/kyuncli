@@ -1,6 +1,6 @@
 import click
-from datetime import datetime
-from .utils import format_eur, get_api_client, calculate_prorated_cost, get_time_remaining_str
+from datetime import datetime, timezone
+from .utils import format_eur, get_api_client, calculate_prorated_cost, get_time_remaining_str, format_bytes, format_percentage
 
 
 @click.group(invoke_without_command=True)
@@ -999,3 +999,66 @@ def bricks_detach(danbo_id, brick_id):
         click.echo(f"Brick {brick_id} detached from Danbo {danbo_id}.")
     except Exception as e:
         click.echo(f"Failed to detach Brick: {e}")
+
+
+@danbo.command("stats")
+@click.argument("danbo_id")
+@click.option("--minutes", "-m", default=10, help="Number of minutes of stats to display (default: 10)")
+def danbo_stats(danbo_id, minutes):
+    """Display Danbo resource usage."""
+    api = get_api_client()
+    if not api:
+        return
+    
+    try:
+        stats = api.get_danbo_stats(danbo_id)
+        if not stats:
+            click.echo("No statistics available for this Danbo.")
+            return
+        
+        latest_stat = stats[-1]
+        
+        unix_time = latest_stat.get('time', 0)
+        if unix_time is None:
+            last_updated = "N/A"
+        else:
+            try:
+                dt = datetime.fromtimestamp(unix_time, tz=timezone.utc)
+                last_updated = dt.strftime("%Y-%m-%d %H:%M:%S UTC")
+            except Exception:
+                last_updated = "Invalid timestamp"
+        
+        click.echo(f"Danbo {danbo_id} - Resource Usage")
+        click.echo(f"Last updated: {last_updated}")
+        click.echo()
+        
+        click.echo(f"Stats (last {min(minutes, len(stats))} minutes):")
+        click.echo(f"{'Time':<20} {'CPU %':<8} {'RAM':<12} {'Net In':<12} {'Net Out':<12} {'Disk Read':<12} {'Disk Write':<12}")
+        click.echo("-" * 100)
+        
+        for stat in reversed(stats[-minutes:]):
+            unix_time = stat.get("time", 0)
+            if unix_time is None:
+                time_str = "N/A"
+            else:
+                try:
+                    dt = datetime.fromtimestamp(unix_time, tz=timezone.utc)
+                    time_str = dt.strftime("%Y-%m-%d %H:%M:%S UTC")
+                except Exception:
+                    time_str = "Invalid timestamp"
+            
+            cpu_str = format_percentage(stat.get("cpu", 0))
+            mem_str = format_bytes(stat.get("mem", 0))
+            netin_str = format_bytes(stat.get("netin", 0))
+            netout_str = format_bytes(stat.get("netout", 0))
+            diskread_str = format_bytes(stat.get("diskread", 0))
+            diskwrite_str = format_bytes(stat.get("diskwrite", 0))
+            
+            click.echo(f"{time_str:<20} {cpu_str:<8} {mem_str:<12} {netin_str:<12} {netout_str:<12} {diskread_str:<12} {diskwrite_str:<12}")
+                
+    except Exception as e:
+        error_msg = str(e)
+        if "404" in error_msg:
+            click.echo(f"Danbo not found.")
+        else:
+            click.echo(f"Failed to fetch statistics: {error_msg}")

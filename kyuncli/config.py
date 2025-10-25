@@ -25,6 +25,7 @@ def get_active_account() -> dict | None:
 def set_active_account(hash_: str) -> bool:
     config = load_config()
     found = False
+    hash_ = hash_.upper()
     for acc in config["accounts"]:
         acc["active"] = (acc["hash"] == hash_)
         if acc["active"]:

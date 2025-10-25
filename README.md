@@ -17,8 +17,6 @@ pip install -e .
 
 ### Dependencies
 
-The project requires Python 3.10+ and the following dependencies:
-
 - `click`
 - `httpx`
 - `requests`
@@ -95,6 +93,12 @@ kyun account contact telegram unlink
 ```bash
 # Check if 2FA is enabled
 kyun account otp status
+
+# Enable 2FA (Also creates backup scratch token)
+kyun account otp enable
+
+# Disable 2FA
+kyun account otp disable
 ```
 
 ### Danbo Management
@@ -111,6 +115,12 @@ kyun danbo buy
 
 # Rename a Danbo
 kyun danbo rename <danbo_id> "New Name"
+
+# View Danbo resource usage statistics
+kyun danbo stats <danbo_id>
+
+# View stats for last 60 minutes
+kyun danbo stats <danbo_id> --minutes 60
 
 # Delete a Danbo (Irreversible)
 kyun danbo management delete <danbo_id>
@@ -316,5 +326,3 @@ If you find a bug, want to request a feature, or anything else, please send me a
 - [ ] Add Stripe support
 - [ ] Add serial access
 - [ ] Allow sending chat messages
-- [ ] Allow fetching of danbo usage stats like cpu, ram, network
-- [ ] Add support for enabling/disabling 2FA

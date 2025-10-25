@@ -108,9 +108,17 @@ def deposit_get(deposit_id):
     api = get_api_client()
     if not api:
         return
-    info = api.get_deposit(deposit_id)
-    status = api.get_deposit_status(deposit_id)
-    print_deposit_info(info, deposit_id=deposit_id, status=status)
+
+    try:
+        info = api.get_deposit(deposit_id)
+        status = api.get_deposit_status(deposit_id)
+        print_deposit_info(info, deposit_id=deposit_id, status=status)
+    except Exception as e:
+        error_msg = str(e)
+        if "500" in error_msg:
+            click.echo(f"Deposit {deposit_id} not found.")
+        else:
+            click.echo(f"Failed to fetch deposit: {error_msg}")
 
 
 @deposit.command("status")

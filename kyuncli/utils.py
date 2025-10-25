@@ -62,3 +62,20 @@ def get_time_remaining_str(next_cycle: str) -> str:
             
     except Exception:
         return "Unknown"
+
+
+def format_bytes(bytes_value: float) -> str:
+    if bytes_value is None:
+        return "0 B"
+    
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if bytes_value < 1024.0:
+            return f"{bytes_value:.1f} {unit}"
+        bytes_value /= 1024.0
+    return f"{bytes_value:.1f} PB"
+
+
+def format_percentage(value: float) -> str:
+    if value is None:
+        return "0.00%"
+    return f"{value:.2f}%"

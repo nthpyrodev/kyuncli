@@ -1,8 +1,11 @@
 import click
 import hashlib
 import time
+import secrets
+import base64
+import qrcode
 from .api import KyunAPI
-from .config import add_or_update_account, set_active_account, remove_account, list_accounts
+from .config import add_or_update_account, set_active_account, remove_account, list_accounts, get_active_account
 from .utils import get_api_client
 
 
@@ -170,6 +173,96 @@ def status():
             click.echo(f"2FA is not enabled")
     except Exception as e:
         click.echo(f"Failed to check 2FA status: {e}")
+
+
+@otp.command()
+def enable():
+    """Enable 2FA for your account."""
+    api = get_api_client()
+    if not api:
+        return
+    
+    try:
+        if api.get_otp_status():
+            click.echo("2FA is already enabled for this account.")
+            return
+        
+        active_account = get_active_account()
+        if not active_account:
+            click.echo("No active account found.")
+            return
+        
+        account_hash = active_account["hash"]
+        
+        secret_bytes = secrets.token_bytes(20)
+        secret = base64.b32encode(secret_bytes).decode('ascii')
+        
+        click.echo("Setting up 2FA for your account...")
+        click.echo()
+        click.echo("Scan the QR code or enter the secret key manually:")
+        click.echo(f"{secret}")
+        click.echo()
+        
+        qr_uri = f"otpauth://totp/Kyun:{account_hash}?secret={secret}&issuer=Kyun"
+        qr = qrcode.QRCode()
+        qr.add_data(qr_uri)
+        qr.make(fit=True)
+        
+        click.echo("QR Code (scan with your authenticator app):")
+        qr.print_ascii(invert=True)
+        click.echo()
+        
+        scratch_token = hashlib.md5(secrets.token_bytes(16)).hexdigest()
+        
+        click.echo("Save this scratch token securely:")
+        click.echo(f"{scratch_token}")
+        click.echo("This token can be used in place of the OTP code.")
+        click.echo()
+        
+        verification_code = click.prompt("Enter the 6-digit code from your authenticator app")
+        
+        api.enable_otp(secret, verification_code, scratch_token)
+        
+        click.echo()
+        click.echo("2FA has been successfully enabled.")
+        click.echo("Remember to save your scratch token securely.")
+        
+    except Exception as e:
+        error_msg = str(e)
+        if "400" in error_msg:
+            click.echo("Failed to enable 2FA: Invalid verification code.")
+        elif "401" in error_msg:
+            click.echo("Failed to enable 2FA: Authentication failed.")
+        else:
+            click.echo(f"Failed to enable 2FA: {error_msg}")
+
+
+@otp.command()
+def disable():
+    """Disable 2FA for your account."""
+    api = get_api_client()
+    if not api:
+        return
+    
+    try:
+        if not api.get_otp_status():
+            click.echo("2FA is not enabled for this account.")
+            return
+        
+        if not click.confirm("Are you sure you want to disable 2FA?"):
+            click.echo("2FA disable cancelled.")
+            return
+        
+        otp_code = click.prompt("Enter your 6-digit OTP code", hide_input=True)
+        api.disable_otp(otp_code)
+        click.echo("2FA has been disabled.")
+        
+    except Exception as e:
+        error_msg = str(e)
+        if "401" in error_msg:
+            click.echo("Failed to disable 2FA: Authentication failed.")
+        else:
+            click.echo(f"Failed to disable 2FA: {error_msg}")
 
 @account.group(invoke_without_command=True)
 @click.pass_context

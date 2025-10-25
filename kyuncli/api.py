@@ -405,3 +405,21 @@ class KyunAPI:
         resp = self.client.get("/user/otp")
         resp.raise_for_status()
         return resp.json()
+
+    def enable_otp(self, secret: str, code: str, scratch_token: str):
+        payload = {"secret": secret, "code": code, "scratchToken": scratch_token}
+        resp = self.client.put("/user/otp", json=payload)
+        resp.raise_for_status()
+        return resp.status_code
+
+    def disable_otp(self, otp_code: str):
+        headers = self.headers.copy()
+        headers["X-OTP-Code"] = otp_code
+        resp = self.client.delete("/user/otp", headers=headers)
+        resp.raise_for_status()
+        return resp.status_code
+
+    def get_danbo_stats(self, danbo_id: str):
+        resp = self.client.get(f"/services/danbo/{danbo_id}/stats")
+        resp.raise_for_status()
+        return resp.json()
