@@ -7,6 +7,30 @@ A **command-line interface** for using [kyun.host](https://kyun.host).
 
 ## Installation
 
+> The following assumes you are on Linux. You will need to change some commands if on Windows
+
+### Installing user wide (Recommended)
+```bash
+sudo apt install pipx
+pipx ensurepath
+git clone https://git.kyun.host/nthpyrodev/kyuncli.git
+cd kyuncli
+python3 -m venv .venv
+source .venv/bin/activate
+pip install build
+python -m build
+deactivate
+pipx install dist/kyuncli-0.1.0-py3-none-any.whl
+
+# Now you can use Kyun CLI
+kyun account login
+
+# To uninstall
+pipx uninstall kyuncli
+```
+
+### Installing in virtual environment
+
 ```bash
 git clone https://git.kyun.host/nthpyrodev/kyuncli.git
 cd kyuncli
@@ -21,7 +45,6 @@ pip install -e .
 - `httpx`
 - `requests`
 - `qrcode`
-- `python-dotenv`
 
 ## Usage
 
@@ -43,7 +66,7 @@ kyun account list
 # Check balance
 kyun account balance
 
-# Remove an account
+# Remove an account (non-destructive, just removes it locally)
 kyun account remove <hash>
 ```
 

@@ -3,7 +3,7 @@ name = "kyuncli"
 version = "0.1.0"
 description = "A simple CLI client for kyun.host"
 requires-python = ">=3.10"
-dependencies = ["click", "httpx", "python-dotenv", "qrcode", "requests"]
+dependencies = ["click", "httpx", "qrcode", "requests"]
 
 [project.scripts]
 kyun = "kyuncli.cli:cli"
