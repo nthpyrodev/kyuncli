@@ -84,6 +84,7 @@ def danbo_buy():
         except Exception as e:
             click.echo(f"Could not fetch available specs: {e}")
             click.echo()
+            max_specs = None
             
         cores = click.prompt("CPU cores (min 1)", type=int)
         ram = click.prompt("RAM in GB (min 0.5)", type=float)
@@ -93,8 +94,15 @@ def danbo_buy():
         if cores < 1:
             click.echo("Cores must be at least 1.")
             return
+        if max_specs and cores > max_specs.get('cores', 0):
+            click.echo(f"Maximum cores available is {max_specs.get('cores', 0)}.")
+            return
+
         if ram < 0.5:
             click.echo("RAM must be at least 0.5 GB.")
+            return
+        if max_specs and ram > max_specs.get('ram', 0):
+            click.echo(f"Maximum RAM available is {max_specs.get('ram', 0)} GB.")
             return
         if ram > 0.5 and ram < 1.0:
             click.echo("RAM must be increased/decreased in steps of 0.5.")
@@ -102,8 +110,12 @@ def danbo_buy():
         if ram >= 1.0 and ram != int(ram):
             click.echo("RAM must be increased/decreased in steps of 0.5.")
             return
+
         if disk < 10:
             click.echo("Disk must be at least 10 GB.")
+            return
+        if max_specs and disk > max_specs.get('disk', 0):
+            click.echo(f"Maximum disk available is {max_specs.get('disk', 0)} GB.")
             return
 
         prices = api.get_datacenter_prices(datacenter)
@@ -127,6 +139,12 @@ def danbo_buy():
         
         if not click.confirm("Proceed with purchase?"):
             click.echo("Operation cancelled.")
+            return
+
+        info = api.get_user_info()
+        available_balance = info.get('balance', 0)
+        if available_balance < total_cost_cents:
+            click.echo(f"You do not have enough balance")
             return
             
         danbo_id = api.buy_danbo(datacenter, cores, ram, disk, fours)
@@ -356,7 +374,7 @@ def specs_max_upgrade(danbo_id):
 @specs.command("change")
 @click.argument("danbo_id")
 def specs_change(danbo_id):
-    """Interactively change specs with validation (charges/refunds will be shown)."""
+    """Change specs (charges/refunds will be shown)."""
     api = get_api_client()
     if not api:
         return
@@ -369,6 +387,20 @@ def specs_change(danbo_id):
         cores = click.prompt("Cores", type=int, default=specs_current.get("cores", 0), show_default=True)
         ram = click.prompt("RAM (GB)", type=float, default=specs_current.get("ram", 0), show_default=True)
         disk = click.prompt("Disk (GB)", type=int, default=specs_current.get("disk", 0), show_default=True)
+
+        try:
+            max_specs = api.get_danbo_max_upgrade(danbo_id)
+            if cores > max_specs.get('cores', 0):
+                click.echo(f"Maximum cores available is {max_specs.get('cores', 0)}.")
+                return
+            if ram > max_specs.get('ram', 0):
+                click.echo(f"Maximum RAM available is {max_specs.get('ram', 0)} GB.")
+                return
+            if disk > max_specs.get('disk', 0):
+                click.echo(f"Maximum disk available is {max_specs.get('disk', 0)} GB.")
+                return
+        except Exception as e:
+            click.echo(f"Could not fetch max upgrade: {e}")
 
         prices = api.get_datacenter_prices(datacenter_id)
                 
@@ -404,6 +436,7 @@ def specs_change(danbo_id):
                 cost_ram_delta_formatted = format_eur(0)
                 cost_disk_delta_formatted = format_eur(0)
         else:
+            prorated_cost_cents = full_total_cost_delta_cents
             prorated_total_cost_formatted = format_eur(full_total_cost_delta_cents)
             cost_cores_delta_formatted = format_eur(full_cost_cores_delta)
             cost_ram_delta_formatted = format_eur(full_cost_ram_delta)
@@ -435,6 +468,13 @@ def specs_change(danbo_id):
         if not click.confirm("Proceed with spec change?"):
             click.echo("Operation cancelled.")
             return
+
+        if prorated_cost_cents > 0:
+            info = api.get_user_info()
+            available_balance = info.get('balance', 0)
+            if available_balance < prorated_cost_cents:
+                click.echo(f"You do not have enough balance")
+                return
 
         try:
             api.change_danbo_specs(danbo_id, cores, ram, disk)

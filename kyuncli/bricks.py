@@ -105,9 +105,17 @@ def brick_buy():
     try:
         gb = click.prompt("Brick size in GB (min 250)", type=int)
         datacenter = click.prompt("Datacenter (e.g., wa/ro)")
+        max_capacity = api.get_brick_max_stock(datacenter)
+
+        if datacenter not in ("wa", "ro"):
+            click.echo("Invalid datacenter entered")
+            return
 
         if gb < 250:
             click.echo("Minimum brick size is 250 GB.")
+            return
+        elif gb > max_capacity:
+            click.echo(f"Maximum brick size currently available is {max_capacity} GB.")
             return
 
         prices = api.get_datacenter_prices(datacenter)
@@ -120,6 +128,12 @@ def brick_buy():
 
         if not click.confirm("Proceed with purchase?"):
             click.echo("Operation cancelled.")
+            return
+
+        info = api.get_user_info()
+        available_balance = info.get('balance', 0)
+        if available_balance < total_price_cents:
+            click.echo(f"You do not have enough balance")
             return
 
         brick_id = api.buy_brick(gb, datacenter)
@@ -181,6 +195,14 @@ def brick_grow(brick_id):
             click.echo("Must add at least 1 GB.")
             return
 
+        try:
+            max_gb = api.get_brick_max_grow(brick_id)
+            if add_gb > max_gb:
+                click.echo(f"Maximum growth available is {max_gb} GB.")
+                return
+        except Exception as e:
+            click.echo(f"Could not fetch max grow: {e}")
+
         b = api.get_brick(brick_id)
         datacenter = b.get("datacenter")
         
@@ -199,6 +221,7 @@ def brick_grow(brick_id):
             prorated_cost_cents = calculate_prorated_cost(full_cost_cents, next_cycle)
             prorated_cost_formatted = format_eur(prorated_cost_cents)
         else:
+            prorated_cost_cents = full_cost_cents
             prorated_cost_formatted = format_eur(full_cost_cents)
 
         click.echo(f"Growing Brick {brick_id} by {add_gb} GB")
@@ -213,6 +236,12 @@ def brick_grow(brick_id):
 
         if not click.confirm("Proceed with growing the Brick?"):
             click.echo("Operation cancelled.")
+            return
+
+        info = api.get_user_info()
+        available_balance = info.get('balance', 0)
+        if available_balance < prorated_cost_cents:
+            click.echo(f"You do not have enough balance")
             return
 
         api.grow_brick(brick_id, add_gb)

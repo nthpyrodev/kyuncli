@@ -79,8 +79,8 @@ def create(password, label):
 @account.command()
 @click.option("--hash", prompt=True, hide_input=False, help="Your account hash")
 @click.option("--password", prompt=True, hide_input=True, help="Your account password")
-@click.option("--otp", prompt="OTP code (if 2FA enabled)", default="", show_default=False, help="OTP code if your account has 2FA enabled")
 @click.option("--label", prompt="Label for new API key", default="kyuncli-key", help="Label to assign to the created API key")
+@click.option("--otp", prompt="OTP code (if 2FA enabled)", default="", show_default=False, help="OTP code if your account has 2FA enabled")
 def login(hash, password, otp, label):
     """Login to account: authenticate and create API key."""
     try:

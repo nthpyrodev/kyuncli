@@ -293,6 +293,11 @@ class KyunAPI:
                               json="DELETE BRICK AND ALL DATA NOW, NO UNDO")
         resp.raise_for_status()
         return resp.status_code
+    
+    def get_brick_max_stock(self, datacenter_id: str):
+        resp = self.client.get(f"/datacenters/{datacenter_id}/brickCapacity")
+        resp.raise_for_status()
+        return resp.json()
 
     def get_brick_max_grow(self, brick_id: str):
         resp = self.client.get(f"/services/bricks/{brick_id}/maxGrow")
