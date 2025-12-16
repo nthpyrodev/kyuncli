@@ -79,3 +79,16 @@ def format_percentage(value: float) -> str:
     if value is None:
         return "0.00%"
     return f"{value:.2f}%"
+
+
+def check_balance(api: KyunAPI, required_cents: int) -> bool:
+    try:
+        info = api.get_user_info()
+        available_balance = info.get('balance', 0)
+        if available_balance < required_cents:
+            click.echo("You do not have enough balance")
+            return False
+        return True
+    except Exception as e:
+        click.echo(f"Failed to check balance: {e}")
+        return True

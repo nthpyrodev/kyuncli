@@ -146,10 +146,13 @@ kyun danbo stats <danbo_id>
 kyun danbo stats <danbo_id> --minutes 60
 
 # Delete a Danbo (Irreversible)
-kyun danbo management delete <danbo_id>
+kyun danbo manage delete <danbo_id>
 
 # Cancel a Danbo (deleted on next renewal)
-kyun danbo management cancel <danbo_id>
+kyun danbo manage cancel <danbo_id>
+
+# Cancel a Danbo with 2FA code
+kyun danbo manage cancel <danbo_id>
 ```
 
 ### Danbo Power Management

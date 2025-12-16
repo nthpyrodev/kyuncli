@@ -1,6 +1,6 @@
 import click
 from datetime import datetime, timezone
-from .utils import format_eur, get_api_client, calculate_prorated_cost, get_time_remaining_str, format_bytes, format_percentage
+from .utils import format_eur, get_api_client, calculate_prorated_cost, get_time_remaining_str, format_bytes, format_percentage, check_balance
 
 
 @click.group(invoke_without_command=True)
@@ -27,17 +27,22 @@ def danbo_list():
         return
 
     click.echo(
-        f"{'ID':<15} {'Name':<20} {'Price (€)':<12} {'Next Cycle':<20} "
+        f"{'ID':<15} {'Name':<20} {'Price (€)':<12} {'Next Cycle':<28} "
         f"{'Cancelled':<10} {'Suspended':<10} {'Uptime (hrs)':<14} {'Datacenter':<15} {'Primary IP':<20}"
     )
-    click.echo("-" * 140)
+    click.echo("-" * 148)
 
     for d in danbos:
         next_cycle = d.get("nextCycle")
+        is_cancelled = d.get("cancelled", False)
         next_cycle_fmt = (
             datetime.fromisoformat(next_cycle.replace("Z", "+00:00")).strftime("%Y-%m-%d %H:%M:%S")
             if next_cycle else "N/A"
         )
+        if is_cancelled and next_cycle:
+            cycle_display = f"{next_cycle_fmt} (cancels)"
+        else:
+            cycle_display = next_cycle_fmt
         uptime_hrs = round(d.get("uptime", 0) / 3600, 2)
 
         try:
@@ -55,8 +60,8 @@ def danbo_list():
             f"{d.get('id', 'N/A'):<15} "
             f"{d.get('name', 'N/A'):<20} "
             f"{total_price:<12} "
-            f"{next_cycle_fmt:<20} "
-            f"{str(d.get('cancelled', False)):<10} "
+            f"{cycle_display:<28} "
+            f"{str(is_cancelled):<10} "
             f"{str(d.get('suspended', False)):<10} "
             f"{uptime_hrs:<14} "
             f"{d.get('datacenter', 'N/A'):<15} "
@@ -77,9 +82,9 @@ def danbo_buy():
         try:
             max_specs = api.get_datacenter_available_specs(datacenter)
             click.echo(f"Available specs in {datacenter}:")
-            click.echo(f"  Max cores: {max_specs.get('cores', 0)}")
-            click.echo(f"  Max RAM: {max_specs.get('ram', 0)} GB")
-            click.echo(f"  Max disk: {max_specs.get('disk', 0)} GB")
+            click.echo(f"Max cores: {max_specs.get('cores', 0)}")
+            click.echo(f"Max RAM: {max_specs.get('ram', 0)} GB")
+            click.echo(f"Max disk: {max_specs.get('disk', 0)} GB")
             click.echo()
         except Exception as e:
             click.echo(f"Could not fetch available specs: {e}")
@@ -89,7 +94,7 @@ def danbo_buy():
         cores = click.prompt("CPU cores (min 1)", type=int)
         ram = click.prompt("RAM in GB (min 0.5)", type=float)
         disk = click.prompt("Disk in GB (min 10)", type=int)
-        fours = click.prompt("Additional IPv4 addresses (optional)", type=int, default=0, show_default=True)
+        fours = click.prompt("IPv4 addresses (optional)", type=int, default=0, show_default=True)
 
         if cores < 1:
             click.echo("Cores must be at least 1.")
@@ -129,22 +134,19 @@ def danbo_buy():
         total_cost = format_eur(total_cost_cents)
         
         click.echo(f"Buying Danbo with specs:")
-        click.echo(f"  Datacenter: {datacenter}")
-        click.echo(f"  Cores: {cores} (€{core_cost/100:.2f})")
-        click.echo(f"  RAM: {ram} GB (€{ram_cost/100:.2f})")
-        click.echo(f"  Disk: {disk} GB (€{disk_cost/100:.2f})")
+        click.echo(f"Datacenter: {datacenter}")
+        click.echo(f"Cores: {cores} (€{core_cost/100:.2f})")
+        click.echo(f"RAM: {ram} GB (€{ram_cost/100:.2f})")
+        click.echo(f"Disk: {disk} GB (€{disk_cost/100:.2f})")
         if fours > 0:
-            click.echo(f"  Additional IPs: {fours} (€{ip_cost/100:.2f})")
+            click.echo(f"IPs: {fours} (€{ip_cost/100:.2f})")
         click.echo(f"Monthly cost: {total_cost}")
         
         if not click.confirm("Proceed with purchase?"):
             click.echo("Operation cancelled.")
             return
 
-        info = api.get_user_info()
-        available_balance = info.get('balance', 0)
-        if available_balance < total_cost_cents:
-            click.echo(f"You do not have enough balance")
+        if not check_balance(api, total_cost_cents):
             return
             
         danbo_id = api.buy_danbo(datacenter, cores, ram, disk, fours)
@@ -204,6 +206,8 @@ def danbo_get(danbo_id):
         )
         click.echo(f"Suspended At   : {suspended_fmt}")
     click.echo(f"Cancelled      : {d.get('cancelled', False)}")
+    if d.get("cancelled", False):
+        click.echo(f"Cancellation Date: {next_cycle_fmt}")
     click.echo(f"Suspended      : {d.get('suspended', False)}")
     click.echo(f"Has ISO        : {d.get('hasIso', False)}")
     click.echo(f"Force Limit    : {d.get('forceLimit', False)}")
@@ -470,10 +474,7 @@ def specs_change(danbo_id):
             return
 
         if prorated_cost_cents > 0:
-            info = api.get_user_info()
-            available_balance = info.get('balance', 0)
-            if available_balance < prorated_cost_cents:
-                click.echo(f"You do not have enough balance")
+            if not check_balance(api, prorated_cost_cents):
                 return
 
         try:
@@ -544,13 +545,13 @@ def power_reboot(danbo_id):
 
 @danbo.group(invoke_without_command=True)
 @click.pass_context
-def management(ctx):
+def manage(ctx):
     """Manage Danbo lifecycle (delete, cancel, resume, unsuspend)."""
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
 
 
-@management.command("delete")
+@manage.command("delete")
 @click.argument("danbo_id")
 def danbo_delete(danbo_id):
     """Delete a Danbo permanently. This action is irreversible."""
@@ -587,27 +588,48 @@ def danbo_delete(danbo_id):
             click.echo(f"Failed to delete Danbo: {e}")
 
 
-@management.command("cancel")
+@manage.command("cancel")
 @click.argument("danbo_id")
-@click.option("--otp", help="OTP code if 2FA is enabled on your account", default="", show_default=False)
-def danbo_cancel(danbo_id, otp):
+def danbo_cancel(danbo_id):
     """Cancel a Danbo (will be deleted on next renewal date)."""
     api = get_api_client()
     if not api:
         return
 
-    if not click.confirm(f"Cancel Danbo {danbo_id}? It will be deleted on the next renewal date."):
+    try:
+        d = api.get_danbo(danbo_id)
+        next_cycle = d.get("nextCycle")
+        next_cycle_fmt = (
+            datetime.fromisoformat(next_cycle.replace("Z", "+00:00")).strftime("%Y-%m-%d %H:%M:%S")
+            if next_cycle else "N/A"
+        )
+    except Exception as e:
+        click.echo(f"Failed to fetch Danbo details: {e}")
+        return
+
+    if not click.confirm(f"Cancel Danbo {danbo_id}? It will be deleted on {next_cycle_fmt}."):
         click.echo("Operation cancelled.")
         return
 
+    otp = click.prompt("OTP code (if 2FA enabled)", default="", show_default=False)
+    otp_to_send = otp.strip() if otp and otp.strip() else None
+
     try:
-        api.cancel_danbo(danbo_id)
-        click.echo(f"Danbo {danbo_id} has been cancelled.")
+        api.cancel_danbo(danbo_id, otp_to_send)
+        click.echo(f"Danbo {danbo_id} has been cancelled. It will be deleted on {next_cycle_fmt}.")
     except Exception as e:
-        click.echo(f"Failed to cancel Danbo: {e}")
+        error_msg = str(e)
+        if "401" in error_msg:
+            click.echo("Failed to cancel Danbo: Incorrect 2FA code.")
+        elif "404" in error_msg:
+            click.echo("Failed to cancel Danbo: Danbo not found.")
+        elif "418" in error_msg:
+            click.echo("Failed to cancel Danbo: OTP is required.")
+        else:
+            click.echo(f"Failed to cancel Danbo: {e}")
 
 
-@management.command("resume")
+@manage.command("resume")
 @click.argument("danbo_id")
 def danbo_resume(danbo_id):
     """Resume a cancelled Danbo."""
@@ -622,7 +644,7 @@ def danbo_resume(danbo_id):
         click.echo(f"Failed to resume Danbo: {e}")
 
 
-@management.command("unsuspend")
+@manage.command("unsuspend")
 @click.argument("danbo_id")
 def danbo_unsuspend(danbo_id):
     """Attempt paying to unsuspend a suspended Danbo."""
@@ -1017,9 +1039,10 @@ def bricks_attach(danbo_id, brick_id):
         api.attach_brick_to_danbo(danbo_id, brick_id)
         click.echo(f"Brick {brick_id} attached to Danbo {danbo_id}.")
     except Exception as e:
-        response = getattr(e, "response", None)
-        code = getattr(response, "status_code", None)
-        if code == 500:
+        error_msg = str(e)
+        if "404" in error_msg:
+            click.echo("Failed to attach Brick: Brick or Danbo not found.")
+        elif "500" in error_msg:
             click.echo("Failed to attach Brick: Brick and Danbo must be in the same datacenter.")
         else:
             click.echo(f"Failed to attach Brick: {e}")
@@ -1038,7 +1061,11 @@ def bricks_detach(danbo_id, brick_id):
         api.detach_brick_from_danbo(danbo_id, brick_id)
         click.echo(f"Brick {brick_id} detached from Danbo {danbo_id}.")
     except Exception as e:
-        click.echo(f"Failed to detach Brick: {e}")
+        error_msg = str(e)
+        if "404" in error_msg:
+            click.echo("Failed to detach Brick: Brick or Danbo not found.")
+        else:
+            click.echo(f"Failed to detach Brick: {e}")
 
 
 @danbo.command("stats")

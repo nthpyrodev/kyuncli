@@ -1,6 +1,6 @@
 import click
 from datetime import datetime
-from .utils import format_eur, get_api_client, calculate_prorated_cost, get_time_remaining_str
+from .utils import format_eur, get_api_client, calculate_prorated_cost, get_time_remaining_str, check_balance
 
 
 @click.group(invoke_without_command=True)
@@ -130,10 +130,7 @@ def brick_buy():
             click.echo("Operation cancelled.")
             return
 
-        info = api.get_user_info()
-        available_balance = info.get('balance', 0)
-        if available_balance < total_price_cents:
-            click.echo(f"You do not have enough balance")
+        if not check_balance(api, total_price_cents):
             return
 
         brick_id = api.buy_brick(gb, datacenter)
@@ -238,10 +235,7 @@ def brick_grow(brick_id):
             click.echo("Operation cancelled.")
             return
 
-        info = api.get_user_info()
-        available_balance = info.get('balance', 0)
-        if available_balance < prorated_cost_cents:
-            click.echo(f"You do not have enough balance")
+        if not check_balance(api, prorated_cost_cents):
             return
 
         api.grow_brick(brick_id, add_gb)
@@ -278,4 +272,3 @@ def brick_unsuspend(brick_id):
         click.echo(f"Payment processed. Brick {brick_id} should be unsuspended shortly.")
     except Exception as e:
         click.echo(f"Failed to unsuspend Brick: {e}")
-

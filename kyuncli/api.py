@@ -345,8 +345,11 @@ class KyunAPI:
         resp.raise_for_status()
         return resp.status_code
 
-    def cancel_danbo(self, danbo_id: str):
-        resp = self.client.post(f"/services/danbo/{danbo_id}/billing/cancel")
+    def cancel_danbo(self, danbo_id: str, otp: str | None = None):
+        headers = {k: v for k, v in self.headers.items()}
+        if otp:
+            headers["X-OTP-Code"] = otp
+        resp = requests.post(f"{API_BASE}/services/danbo/{danbo_id}/billing/cancel", headers=headers)
         resp.raise_for_status()
         return resp.status_code
 
