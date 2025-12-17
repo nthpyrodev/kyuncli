@@ -349,6 +349,66 @@ def danbo_set_primary_ip(danbo_id, ip):
         click.echo(f"Failed to set primary IP: {e}")
 
 
+@ip.group(invoke_without_command=True)
+@click.pass_context
+def rdns(ctx):
+    """Manage reverse DNS for IPv4 addresses."""
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
+
+
+@rdns.command("list")
+@click.argument("danbo_id")
+@click.argument("ip")
+def rdns_list(danbo_id, ip):
+    """List reverse DNS entries for an IP."""
+    api = get_api_client()
+    if not api:
+        return
+    try:
+        entries = api.get_danbo_reverse_dns(danbo_id, ip)
+        if not entries:
+            click.echo(f"No reverse DNS entries for {ip}.")
+            return
+        click.echo(f"Reverse DNS for {ip}:")
+        for entry in entries:
+            click.echo(f"  - {entry}")
+    except Exception as e:
+        click.echo(f"Failed to get reverse DNS: {e}")
+
+
+@rdns.command("add")
+@click.argument("danbo_id")
+@click.argument("ip")
+@click.argument("domain")
+def rdns_add(danbo_id, ip, domain):
+    """Add a reverse DNS entry to an IP."""
+    api = get_api_client()
+    if not api:
+        return
+    try:
+        api.add_danbo_reverse_dns(danbo_id, ip, domain)
+        click.echo(f"Reverse DNS '{domain}' added to {ip}.")
+    except Exception as e:
+        click.echo(f"Failed to add reverse DNS: {e}")
+
+
+@rdns.command("remove")
+@click.argument("danbo_id")
+@click.argument("ip")
+@click.argument("domain")
+def rdns_remove(danbo_id, ip, domain):
+    """Remove a reverse DNS entry from an IP."""
+    api = get_api_client()
+    if not api:
+        return
+    try:
+        api.remove_danbo_reverse_dns(danbo_id, ip, domain)
+        click.echo(f"Reverse DNS '{domain}' removed from {ip}.")
+    except Exception as e:
+        click.echo(f"Failed to remove reverse DNS: {e}")
+
+
 
 @danbo.group(invoke_without_command=True)
 @click.pass_context
@@ -774,7 +834,7 @@ def bandwidth_set(danbo_id, limit):
         error_msg = str(e)
 
         if "400" in error_msg or "422" in error_msg:
-            click.echo("Failed to set bandwidth limit: Invalid bandwidth limit. Ensure it is a valid positive number within datacenter constraints.")
+            click.echo("Invalid bandwidth limit.")
         else:
             click.echo(f"Failed to set bandwidth limit: {error_msg}")
 
@@ -782,7 +842,7 @@ def bandwidth_set(danbo_id, limit):
 @bandwidth.command("clear")
 @click.argument("danbo_id")
 def bandwidth_clear(danbo_id):
-    """Clear (remove) the bandwidth limit for this Danbo."""
+    """Clear the bandwidth limit for this Danbo."""
     api = get_api_client()
     if not api:
         return

@@ -156,6 +156,16 @@ class KyunAPI:
         resp.raise_for_status()
         return resp.json()
 
+    def add_danbo_reverse_dns(self, danbo_id: str, ip: str, domain: str):
+        resp = self.client.put(f"/services/danbo/{danbo_id}/ips/{ip}/reverse", json=domain)
+        resp.raise_for_status()
+        return resp.status_code
+
+    def remove_danbo_reverse_dns(self, danbo_id: str, ip: str, domain: str):
+        resp = self.client.request("DELETE", f"/services/danbo/{danbo_id}/ips/{ip}/reverse", json=domain)
+        resp.raise_for_status()
+        return resp.status_code
+
     def get_danbo_ipv6_subnet(self, danbo_id: str):
         resp = self.client.get(f"/services/danbo/{danbo_id}/ips/sixSubnet")
         resp.raise_for_status()

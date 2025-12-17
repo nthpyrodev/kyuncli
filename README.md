@@ -198,6 +198,15 @@ kyun danbo ip remove <danbo_id> <ip_address>
 
 # Set primary IP
 kyun danbo ip set-primary-ip <danbo_id> <ip_address>
+
+# List reverse DNS entries for an IP
+kyun danbo ip rdns list <danbo_id> <ip_address>
+
+# Add reverse DNS entry
+kyun danbo ip rdns add <danbo_id> <ip_address> <domain>
+
+# Remove reverse DNS entry
+kyun danbo ip rdns remove <danbo_id> <ip_address> <domain>
 ```
 
 ### Danbo SSH Management
