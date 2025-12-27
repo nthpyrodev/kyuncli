@@ -1,7 +1,7 @@
 # Kyun CLI (Beta)
 
 A **command-line interface** for using [kyun.host](https://kyun.host).  
-> **Note:** This project is currently in **beta**. OS installation and Stripe payments are not yet supported.
+> **Note:** This project is currently in **beta**. Stripe payments are not yet supported.
 
 ---
 
@@ -244,6 +244,19 @@ kyun danbo bandwidth set <danbo_id> --limit 100
 kyun danbo bandwidth clear <danbo_id>
 ```
 
+### Danbo OS Management
+
+```bash
+# Install an OS on a Danbo
+kyun danbo os install <danbo_id>
+
+# Get the installed OS name
+kyun danbo os get <danbo_id>
+
+# Set the OS name
+kyun danbo os set <danbo_id> "Debian 12 Bookworm"
+```
+
 ### Danbo Subdomain Management
 
 ```bash
@@ -356,7 +369,6 @@ If you find a bug, want to request a feature, or anything else, please send me a
 
 ## TODO
 
-- [ ] Add support for installing OS to danbo
 - [ ] Store API in keyring
 - [ ] Add Stripe support
 - [ ] Add serial access

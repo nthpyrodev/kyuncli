@@ -441,3 +441,59 @@ class KyunAPI:
         resp = self.client.get(f"/services/danbo/{danbo_id}/stats")
         resp.raise_for_status()
         return resp.json()
+
+    def submit_cloudinit_task(self, node_hostname: str, agent_token: str, os_name: str, image_url: str, checksum: dict | None, authorized_keys: str) -> bool:
+        try:
+            base_url = f"https://{node_hostname}:1337"
+            url = f"{base_url}/guest/cloudInit?token={agent_token}"
+            
+            headers = {
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "osName": os_name,
+                "imageUrl": image_url,
+                "authorizedKeys": authorized_keys
+            }
+            
+            if checksum:
+                payload["checksum"] = checksum
+            
+            with httpx.Client(timeout=httpx.Timeout(connect=10.0, read=20.0, write=10.0, pool=5.0)) as client:
+                resp = client.post(url, json=payload, headers=headers)
+                resp.raise_for_status()
+                return True
+        except httpx.HTTPStatusError as e:
+            raise Exception(f"Node agent returned error {e.response.status_code}: {e.response.text}")
+        except httpx.TimeoutException:
+            raise Exception("TIMEOUT")
+        except Exception as e:
+            raise Exception(f"Failed to submit cloudInit task to node agent: {e}")
+
+    def get_agent_token(self, danbo_id: str, otp: str | None = None) -> str:
+        headers = self.headers.copy()
+        if otp:
+            headers["X-OTP-Code"] = otp
+        resp = self.client.get(f"/services/danbo/{danbo_id}/agentToken", headers=headers)
+        resp.raise_for_status()
+        return resp.text.strip('"')
+
+    def get_danbo_os_name(self, danbo_id: str) -> str:
+        resp = self.client.get(f"/services/danbo/{danbo_id}/osName")
+        resp.raise_for_status()
+        return resp.text.strip('"')
+
+    def set_danbo_os_name(self, danbo_id: str, os_name: str):
+        resp = self.client.patch(f"/services/danbo/{danbo_id}/osName", json=os_name)
+        resp.raise_for_status()
+        return resp.status_code
+
+    def fetch_os_images_metadata(self) -> dict:
+        try:
+            with httpx.Client(timeout=httpx.Timeout(connect=10.0, read=30.0, write=10.0, pool=5.0)) as client:
+                resp = client.get("https://mirror.kyun.network/images/meta.json")
+                resp.raise_for_status()
+                return resp.json()
+        except Exception as e:
+            raise Exception(f"Failed to fetch OS images metadata: {e}")

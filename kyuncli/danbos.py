@@ -1,6 +1,9 @@
 import click
 from datetime import datetime, timezone
-from .utils import format_eur, get_api_client, calculate_prorated_cost, get_time_remaining_str, format_bytes, format_percentage, check_balance
+from .utils import (
+    format_eur, get_api_client, calculate_prorated_cost, get_time_remaining_str,
+    format_bytes, format_percentage, check_balance
+)
 
 
 @click.group(invoke_without_command=True)
@@ -176,6 +179,7 @@ def danbo_get(danbo_id):
         ipv6 = api.get_danbo_ipv6_subnet(danbo_id)
         subdomains = api.get_danbo_subdomains(danbo_id)
         bricks = api.get_danbo_bricks(danbo_id)
+        os_name = api.get_danbo_os_name(danbo_id)
     except Exception as e:
         click.echo(f"Failed to fetch Danbo details: {e}")
         return
@@ -211,7 +215,7 @@ def danbo_get(danbo_id):
     click.echo(f"Suspended      : {d.get('suspended', False)}")
     click.echo(f"Has ISO        : {d.get('hasIso', False)}")
     click.echo(f"Force Limit    : {d.get('forceLimit', False)}")
-    click.echo(f"OS             : {d.get('os', 'N/A')}")
+    click.echo(f"OS             : {os_name}")
     click.echo("-" * 60)
 
     click.echo("Specs:")
@@ -576,7 +580,15 @@ def _power_action(danbo_id: str, action: str):
         api.change_danbo_power(danbo_id, action)
         click.echo(f"Power action '{action}' successfully sent to Danbo {danbo_id}.")
     except Exception as e:
-        click.echo(f"Failed to change power state: {e}")
+        error_msg = str(e)
+        if "403" in error_msg:
+            click.echo("Failed to change power state: Forbidden.")
+            click.echo("This may be because an OS installation task is currently running.")
+        elif "500" in error_msg:
+            click.echo("Failed to change power state: Server error.")
+            click.echo("Danbo may already be in the requested state.")
+        else:
+            click.echo(f"Failed to change power state: {e}")
 
 @power.command("start")
 @click.argument("danbo_id")
@@ -1126,6 +1138,253 @@ def bricks_detach(danbo_id, brick_id):
             click.echo("Failed to detach Brick: Brick or Danbo not found.")
         else:
             click.echo(f"Failed to detach Brick: {e}")
+
+
+@danbo.group(invoke_without_command=True)
+@click.pass_context
+def os(ctx):
+    """Install OS and manage OS name for Danbos."""
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
+
+
+@os.command("install")
+@click.argument("danbo_id")
+def os_install(danbo_id):
+    """Install operating system on Danbo."""
+    api = get_api_client()
+    if not api:
+        return
+
+    try:
+        danbo_info = api.get_danbo(danbo_id)
+        node_hostname = danbo_info.get("nodeHostname")
+        if not node_hostname:
+            click.echo("Failed to get node hostname for Danbo.")
+            return
+
+        try:
+            stats = api.get_danbo_stats(danbo_id)
+            if stats and len(stats) > 0:
+                latest_stat = stats[-1]
+                if latest_stat.get("cpu") is not None or latest_stat.get("mem") is not None:
+                    click.echo("Danbo must be powered off to install an OS.")
+                    click.echo(f"Please power off the Danbo using: kyun danbo power stop {danbo_id}")
+                    return
+        except Exception:
+            click.echo("Could not check Danbo power state.")
+            click.echo("Please ensure the Danbo is powered off before proceeding.")
+
+        click.echo("Fetching available OS images...")
+        metadata = api.fetch_os_images_metadata()
+
+        os_list = []
+        for os_family, versions in metadata.items():
+            for version, info in versions.items():
+                if info.get("success", False):
+                    os_list.append((os_family, version, info))
+
+        if not os_list:
+            click.echo("No OS images available.")
+            return
+
+        click.echo("\nAvailable Operating Systems:")
+        click.echo("-" * 80)
+        click.echo(f"{0:3}. Custom image URL (Must be cloud-init enabled)")
+        for idx, (family, version, info) in enumerate(os_list, 1):
+            tags_str = f" [{', '.join(info.get('tags', []))}]" if info.get('tags') else ""
+            click.echo(f"{idx:3}. {family:20} {version:30}{tags_str}")
+
+        selection = click.prompt("\nSelect OS (enter number)", type=int)
+        if selection < 0 or selection > len(os_list):
+            click.echo("Invalid selection.")
+            return
+
+        if selection == 0:
+            image_url = click.prompt("Enter image URL")
+            if not image_url.startswith(("http://", "https://")):
+                click.echo("Invalid image URL. Must start with http:// or https://")
+                return
+            
+            os_name = click.prompt("Enter OS name (autodetected by Kyun if qemu-guest-agent is installed)")
+            if not os_name.strip():
+                click.echo("OS name cannot be empty.")
+                return
+            
+            checksum_data = None
+            use_checksum = click.confirm("Provide checksum?", default=False)
+            if use_checksum:
+                checksum_type = click.prompt("Checksum type", default="sha256", type=click.Choice(["sha256", "sha512"]))
+                checksum_sum = click.prompt("Checksum value")
+                checksum_sum = checksum_sum.strip()
+                
+                if not checksum_sum:
+                    click.echo("Checksum value cannot be empty.")
+                    return
+                
+                if checksum_type == "sha256" and len(checksum_sum) != 64:
+                    click.echo("Warning: SHA256 checksum should be 64 characters.")
+                    if not click.confirm("Continue anyway?"):
+                        return
+                elif checksum_type == "sha512" and len(checksum_sum) != 128:
+                    click.echo("Warning: SHA512 checksum should be 128 characters.")
+                    if not click.confirm("Continue anyway?"):
+                        return
+                
+                try:
+                    int(checksum_sum, 16)
+                except ValueError:
+                    click.echo("Invalid checksum format. Must be hexadecimal.")
+                    return
+                
+                checksum_data = {"type": checksum_type, "sum": checksum_sum}
+        else:
+            selected_family, selected_version, selected_info = os_list[selection - 1]
+            filename = selected_info.get("filename")
+            checksum_info = selected_info.get("checksum", {})
+            checksum_type = checksum_info.get("type", "sha256")
+            checksum = checksum_info.get("sum", "")
+
+            image_url = f"https://mirror.kyun.network/images/sources/{filename}"
+            os_name = f"{selected_family} {selected_version}"
+            
+            if checksum and checksum_type:
+                checksum_data = {
+                    "type": checksum_type,
+                    "sum": checksum
+                }
+            else:
+                checksum_data = None
+
+        click.echo("Fetching SSH keys from your account...")
+        try:
+            ssh_keys = api.get_user_ssh_keys()
+            if not ssh_keys:
+                click.echo("No SSH keys found in your account.")
+                click.echo("Add an SSH key using: kyun account ssh add --file ~/.ssh/id_rsa.pub --name \"My key\"")
+                click.echo("Then try the installation again.")
+                return
+
+            click.echo("\nAvailable SSH keys:")
+            for idx, key_obj in enumerate(ssh_keys, 1):
+                key_name = key_obj.get('name', 'Unnamed')
+                key_id = key_obj.get('id', 'N/A')
+                key = key_obj.get('key', '').strip()
+                click.echo(f"{idx}. {key_name} (ID: {key_id})")
+                if key:
+                    click.echo(f"   {key[:50]}...")
+
+            if len(ssh_keys) == 1:
+                selected_keys = ssh_keys
+                click.echo(f"\nUsing SSH key: {ssh_keys[0].get('name', 'Unnamed')}")
+            else:
+                key_selection = click.prompt(f"\nSelect SSH key(s) (enter number, comma separated numbers for multiple, or 'all' for all)", default="all")
+                if key_selection.lower() == "all":
+                    selected_keys = ssh_keys
+                else:
+                    selected_keys = []
+                    try:
+                        selections = key_selection.split(",")
+                        for sel in selections:
+                            idx = int(sel.strip())
+                            if 1 <= idx <= len(ssh_keys):
+                                selected_keys.append(ssh_keys[idx - 1])
+                        if not selected_keys:
+                            click.echo("Invalid selection.")
+                            return
+                    except Exception:
+                        click.echo("Invalid selection.")
+                        return
+
+            authorized_keys = "\n".join([k.get('key', '').strip() for k in selected_keys if k.get('key', '').strip()])
+            click.echo(f"Using {len(selected_keys)} SSH key(s).")
+        except Exception as e:
+            click.echo(f"Failed to fetch SSH keys: {e}")
+            return
+
+        click.echo(f"\nReady to install {os_name} on Danbo {danbo_id}.")
+        click.echo("WARNING: This will overwrite all data on the Danbo!")
+        if not click.confirm("Proceed with installation?"):
+            click.echo("Installation cancelled.")
+            return
+
+        otp = click.prompt("OTP code (if 2FA enabled)", default="", show_default=False)
+        otp_to_send = otp.strip() if otp and otp.strip() else None
+
+        click.echo("Getting agent token...")
+        try:
+            agent_token = api.get_agent_token(danbo_id, otp_to_send)
+        except Exception as e:
+            error_msg = str(e)
+            if "401" in error_msg or "403" in error_msg:
+                click.echo("Failed to get agent token: Invalid 2FA code or authentication failed.")
+            elif "418" in error_msg:
+                click.echo("Failed to get agent token: 2FA is required but no OTP code provided.")
+            else:
+                click.echo(f"Failed to get agent token: {e}")
+            return
+
+        click.echo("Submitting installation task to node agent...")
+        try:
+            api.submit_cloudinit_task(
+                node_hostname,
+                agent_token,
+                os_name,
+                image_url,
+                checksum_data,
+                authorized_keys
+            )
+            click.echo("Task submitted successfully.")
+            click.echo("Installation is in progress. If the Danbo is not powered on within 5 minutes, try starting it manually:")
+            click.echo(f"  kyun danbo power start {danbo_id}")
+            click.echo("\nOS install is in beta. If install fails, please view the error from the Kyun dashboard, and contact support if necessary.")
+        except Exception as e:
+            error_msg = str(e)
+            if "TIMEOUT" in error_msg:
+                click.echo("Request timed out, but task was likely submitted successfully.")
+                click.echo("Installation is probably in progress. If the Danbo is not powered on within 5 minutes, try starting it manually:")
+                click.echo(f"  kyun danbo power start {danbo_id}")
+            elif "500" in error_msg and "SSH" in error_msg:
+                click.echo("Failed to submit cloudInit task: SSH key validation error.")
+                click.echo("One or more SSH keys may be invalid. Please check your SSH keys and try again.")
+                return
+            else:
+                click.echo(f"Failed to submit task: {e}")
+                return
+
+    except Exception as e:
+        click.echo(f"Failed to install OS: {e}")
+
+
+@os.command("get")
+@click.argument("danbo_id")
+def os_get(danbo_id):
+    """Get the installed OS name for a Danbo."""
+    api = get_api_client()
+    if not api:
+        return
+
+    try:
+        os_name = api.get_danbo_os_name(danbo_id)
+        click.echo(f"Installed OS for Danbo {danbo_id}: {os_name}")
+    except Exception as e:
+        click.echo(f"Failed to get OS name: {e}")
+
+
+@os.command("set")
+@click.argument("danbo_id")
+@click.argument("os_name")
+def os_set(danbo_id, os_name):
+    """Change the OS name for a Danbo."""
+    api = get_api_client()
+    if not api:
+        return
+
+    try:
+        api.set_danbo_os_name(danbo_id, os_name)
+        click.echo(f"OS name set to '{os_name}' for Danbo {danbo_id}.")
+    except Exception as e:
+        click.echo(f"Failed to set OS name: {e}")
 
 
 @danbo.command("stats")
