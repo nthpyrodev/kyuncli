@@ -1,6 +1,6 @@
 # Kyun CLI (Beta)
 
-A **command-line interface** for using [kyun.host](https://kyun.host).  
+A command-line interface for using [kyun.host](https://kyun.host).  
 > **Note:** This project is currently in **beta**. Stripe payments are not yet supported.
 
 ---
