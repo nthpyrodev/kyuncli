@@ -469,7 +469,7 @@ class KyunAPI:
         except httpx.TimeoutException:
             raise Exception("TIMEOUT")
         except Exception as e:
-            raise Exception(f"Failed to submit cloudInit task to node agent: {e}")
+            raise Exception(f"Failed to submit task to node agent: {e}")
 
     def get_agent_token(self, danbo_id: str, otp: str | None = None) -> str:
         headers = self.headers.copy()
