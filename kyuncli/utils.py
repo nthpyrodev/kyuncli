@@ -1,7 +1,7 @@
 import click
 from datetime import datetime, timezone
 from .api import KyunAPI
-from .config import get_active_account
+from .config import get_active_account, show_migration_message
 
 
 def format_eur(value: int | float) -> str:
@@ -15,6 +15,9 @@ def get_api_client() -> KyunAPI | None:
     if not active:
         click.echo("No active account.")
         return None
+    
+    if active.get("_json_api"):
+        show_migration_message(active["hash"])
     
     return KyunAPI(api_key=active["api_key"])
 

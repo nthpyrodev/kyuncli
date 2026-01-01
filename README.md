@@ -45,6 +45,8 @@ pip install -e .
 - `httpx`
 - `requests`
 - `qrcode`
+- `keyring`
+- `platformdirs`
 
 ## Usage
 
@@ -357,10 +359,16 @@ kyun chat privacy disable <chat_id>
 
 ## Configuration
 
-Account information is stored in `~/.config/kyuncli/config.json`. This includes:
+### Config File Location
 
+Account info is stored in a config file:
+
+- **Linux**: `~/.config/kyuncli/config.json`
+- **macOS**: `~/Library/Application Support/kyuncli/config.json`
+- **Windows**: `%APPDATA%\kyuncli\config.json`
+
+The config file stores:
 - Account hash
-- API key
 - User ID
 
 ## Issues
@@ -369,7 +377,6 @@ If you find a bug, want to request a feature, or anything else, please send me a
 
 ## TODO
 
-- [ ] Store API in keyring
 - [ ] Add Stripe support
 - [ ] Add serial access
 - [ ] Allow sending chat messages

@@ -74,7 +74,7 @@ def danbo_list():
 
 @danbo.command("buy")
 def danbo_buy():
-    """Buy a new Danbo with specified specifications."""
+    """Buy a new Danbo"""
     api = get_api_client()
     if not api:
         return
@@ -417,7 +417,7 @@ def rdns_remove(danbo_id, ip, domain):
 @danbo.group(invoke_without_command=True)
 @click.pass_context
 def specs(ctx):
-    """Manage specs (RAM, disk, cores) of your Danbos."""
+    """Manage Danbo specs."""
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
 
@@ -618,7 +618,7 @@ def power_reboot(danbo_id):
 @danbo.group(invoke_without_command=True)
 @click.pass_context
 def manage(ctx):
-    """Manage Danbo lifecycle (delete, cancel, resume, unsuspend)."""
+    """Manage Danbo renewal (delete, cancel, resume, unsuspend)."""
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
 
@@ -719,7 +719,7 @@ def danbo_resume(danbo_id):
 @manage.command("unsuspend")
 @click.argument("danbo_id")
 def danbo_unsuspend(danbo_id):
-    """Attempt paying to unsuspend a suspended Danbo."""
+    """Pay for a Danbo suspended for insufficient balance at renewal."""
     api = get_api_client()
     if not api:
         return

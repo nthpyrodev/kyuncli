@@ -82,7 +82,7 @@ def create(password, label):
 @click.option("--label", prompt="Label for new API key", default="kyuncli-key", help="Label to assign to the created API key")
 @click.option("--otp", prompt="OTP code (if 2FA enabled)", default="", show_default=False, help="OTP code if your account has 2FA enabled")
 def login(hash, password, otp, label):
-    """Login to account: authenticate and create API key."""
+    """Login to account and create API key."""
     try:
         api_temp = KyunAPI(temp_token=None)
         token = api_temp.login(hash, password, otp if otp else None)
@@ -93,7 +93,7 @@ def login(hash, password, otp, label):
         user_id = user_info["id"]
         
         add_or_update_account(hash, api_key, user_id)
-        click.echo(f"Login complete. API key saved and active for {hash}.")
+        click.echo(f"Login complete. API key saved and active for {hash.upper()}.")
     except Exception as e:
         error_msg = str(e)
         if "401" in error_msg:
@@ -116,7 +116,7 @@ def switch(hash_):
     """Switch active account."""
     found = set_active_account(hash_)
     if found:
-        click.echo(f"Switched active account to {hash_}.")
+        click.echo(f"Switched active account to {hash_.upper()}.")
         return
 
     click.echo(f"Account {hash_} not found. Please setup with 'kyun account login' or create with 'kyun account create'.")
