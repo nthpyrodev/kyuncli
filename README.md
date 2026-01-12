@@ -1,6 +1,6 @@
 # Kyun CLI (Beta)
 
-A command-line interface for using [kyun.host](https://kyun.host).  
+A command-line interface for using [kyun.sh](https://kyun.sh).  
 > **Note:** This project is currently in **beta**. Stripe payments are not yet supported.
 
 ---
@@ -13,7 +13,7 @@ A command-line interface for using [kyun.host](https://kyun.host).
 ```bash
 sudo apt install pipx
 pipx ensurepath
-git clone https://git.kyun.host/nthpyrodev/kyuncli.git
+git clone https://git.kyun.sh/nthpyrodev/kyuncli.git
 cd kyuncli
 python3 -m venv .venv
 source .venv/bin/activate
@@ -32,7 +32,7 @@ pipx uninstall kyuncli
 ### Installing in virtual environment
 
 ```bash
-git clone https://git.kyun.host/nthpyrodev/kyuncli.git
+git clone https://git.kyun.sh/nthpyrodev/kyuncli.git
 cd kyuncli
 python3 -m venv .venv
 source .venv/bin/activate

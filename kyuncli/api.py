@@ -1,7 +1,7 @@
 import httpx
 import requests
 
-API_BASE = "https://api.kyun.host"
+API_BASE = "https://api.kyun.sh"
 
 class KyunAPI:
     def __init__(self, api_key: str | None = None, temp_token: str | None = None, otp: str | None = None):

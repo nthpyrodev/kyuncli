@@ -765,7 +765,7 @@ def subdomain_list(danbo_id):
 @subdomains.command("create")
 @click.argument("danbo_id")
 @click.option("--name", required=True, help="Subdomain name (e.g., panel/api)")
-@click.option("--domain", required=True, help="Domain (e.g., kyun.host/example.com)")
+@click.option("--domain", required=True, help="Domain (kyun.li)")
 @click.option("--ip", required=True, help="IPv4 address to assign to the subdomain")
 def subdomain_create(danbo_id, name, domain, ip):
     """Create a subdomain for the specified Danbo."""
