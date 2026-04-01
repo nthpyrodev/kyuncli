@@ -406,7 +406,7 @@ The config file stores:
 
 ## Issues
 
-If you find a bug, want to request a feature, or anything else, please send me a message or create an issue here: https://github.com/nthpyrodev/kyuncli
+If you find a bug, want to request a feature, or anything else, please send me a message using any of my contact methods
 
 ## TODO
 
