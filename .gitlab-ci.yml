@@ -17,6 +17,8 @@ workflow:
 
 build-wheel:
   stage: build
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq git
   script:
     - pip install --quiet build
     - python -m build
