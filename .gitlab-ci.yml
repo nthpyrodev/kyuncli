@@ -1,6 +1,7 @@
 stages:
   - build
   - upload
+  - publish
   - release
 
 default:
@@ -58,6 +59,19 @@ upload-packages:
   artifacts:
     reports:
       dotenv: upload.env
+
+publish-pypi:
+  stage: publish
+  needs:
+    - job: build-wheel
+      artifacts: true
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v.*/ && $PYPI_API_TOKEN
+  script:
+    - pip install --quiet twine
+    - export TWINE_USERNAME=__token__
+    - export TWINE_PASSWORD="$PYPI_API_TOKEN"
+    - twine upload --non-interactive dist/*
 
 create-release:
   stage: release

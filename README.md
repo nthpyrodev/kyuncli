@@ -9,28 +9,34 @@ A command-line interface for using [kyun.sh](https://kyun.sh).
 
 > The following assumes you are on Linux. You will need to change some commands if on Windows or macOS.
 
-### Quick install from Release (Recommended)
+### Install from PyPI (Recommended)
 
-Download and install the prebuilt wheel directly from the latest release using [pipx](https://pipx.pypa.io):
+Install with [pipx](https://pipx.pypa.io):
 
 ```bash
 sudo apt install pipx
 pipx ensurepath
-
-# Install directly from the latest release
-pipx install https://git.kyun.sh/nthpyrodev/kyuncli/-/releases/permalink/latest/downloads/kyuncli-latest-py3-none-any.whl
+pipx install kyuncli
 
 # Now you can use Kyun CLI
 kyun account login
+
+# To upgrade
+pipx upgrade kyuncli
 
 # To uninstall
 pipx uninstall kyuncli
 ```
 
-All releases and their download links are listed at:
-**https://git.kyun.sh/nthpyrodev/kyuncli/-/releases**
+### Install from releases
 
-### Build it yourself (from source)
+Use the `.whl` link from [Releases](https://git.kyun.sh/nthpyrodev/kyuncli/-/releases):
+
+```bash
+pipx install <link-to-release>
+```
+
+### Build it yourself
 
 If you prefer to build the package yourself:
 
