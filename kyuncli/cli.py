@@ -4,8 +4,11 @@ from .deposits import deposit
 from .danbos import danbo
 from .bricks import brick
 from .chat import chat
+from .version import get_version
+
 
 @click.group(invoke_without_command=True)
+@click.version_option(version=get_version(), prog_name="kyuncli")
 @click.pass_context
 def cli(ctx):
     """KyunCLI.

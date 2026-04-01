@@ -7,20 +7,18 @@ A command-line interface for using [kyun.sh](https://kyun.sh).
 
 ## Installation
 
-> The following assumes you are on Linux. You will need to change some commands if on Windows
+> The following assumes you are on Linux. You will need to change some commands if on Windows or macOS.
 
-### Installing user wide (Recommended)
+### Quick install from Release (Recommended)
+
+Download and install the prebuilt wheel directly from the latest release using [pipx](https://pipx.pypa.io):
+
 ```bash
 sudo apt install pipx
 pipx ensurepath
-git clone https://git.kyun.sh/nthpyrodev/kyuncli.git
-cd kyuncli
-python3 -m venv .venv
-source .venv/bin/activate
-pip install build
-python -m build
-deactivate
-pipx install dist/kyuncli-0.1.0-py3-none-any.whl
+
+# Install directly from the latest release
+pipx install https://git.kyun.sh/nthpyrodev/kyuncli/-/releases/permalink/latest/downloads/kyuncli-latest-py3-none-any.whl
 
 # Now you can use Kyun CLI
 kyun account login
@@ -29,7 +27,36 @@ kyun account login
 pipx uninstall kyuncli
 ```
 
-### Installing in virtual environment
+All releases and their download links are listed at:
+**https://git.kyun.sh/nthpyrodev/kyuncli/-/releases**
+
+### Build it yourself (from source)
+
+If you prefer to build the package yourself:
+
+```bash
+sudo apt install pipx
+pipx ensurepath
+
+git clone https://git.kyun.sh/nthpyrodev/kyuncli.git
+cd kyuncli
+python3 -m venv .venv
+source .venv/bin/activate
+pip install build
+python -m build
+deactivate
+
+# Install your locally built wheel
+pipx install dist/kyuncli-*.whl
+
+# Now you can use Kyun CLI
+kyun account login
+
+# To uninstall
+pipx uninstall kyuncli
+```
+
+### Installing in a virtual environment (for development)
 
 ```bash
 git clone https://git.kyun.sh/nthpyrodev/kyuncli.git
