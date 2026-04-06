@@ -1,5 +1,8 @@
 import httpx
 import requests
+import json
+import time
+import websocket
 
 API_BASE = "https://api.kyun.sh"
 
@@ -14,6 +17,13 @@ class KyunAPI:
             self.headers["X-OTP-Code"] = otp
 
         self.client = httpx.Client(base_url=API_BASE, headers=self.headers, timeout=httpx.Timeout(connect=20.0, read=20.0, write=10.0, pool=5.0))
+        self._last_mark_read_at: dict[str, float] = {}
+
+    def _get_auth_token(self) -> str:
+        token = self.headers.get("X-Auth-Token")
+        if not token:
+            raise Exception("Missing auth token.")
+        return token
 
     def get_pow_challenge(self):
         resp = self.client.get("/etc/powChallenge")
@@ -359,7 +369,7 @@ class KyunAPI:
         headers = {k: v for k, v in self.headers.items()}
         if otp:
             headers["X-OTP-Code"] = otp
-        resp = self.client.post(f"{API_BASE}/services/danbo/{danbo_id}/billing/cancel", headers=headers)
+        resp = self.client.post(f"/services/danbo/{danbo_id}/billing/cancel", headers=headers)
         resp.raise_for_status()
         return resp.status_code
 
@@ -388,6 +398,11 @@ class KyunAPI:
         resp.raise_for_status()
         return resp.text.strip('"')
 
+    def get_chat(self, chat_id: str):
+        resp = self.client.get(f"/chats/{chat_id}")
+        resp.raise_for_status()
+        return resp.json()
+
     def get_chat_messages(self, chat_id: str):
         resp = self.client.get(f"/chats/{chat_id}/messages")
         resp.raise_for_status()
@@ -397,7 +412,16 @@ class KyunAPI:
     def mark_chat_read(self, chat_id: str):
         resp = self.client.post(f"/chats/{chat_id}/read")
         resp.raise_for_status()
+        self._last_mark_read_at[chat_id] = time.monotonic()
         return resp.status_code
+
+    def mark_chat_read_throttled(self, chat_id: str, min_interval_seconds: float = 10.0, force: bool = False):
+        if not force:
+            now = time.monotonic()
+            last = self._last_mark_read_at.get(chat_id)
+            if last is not None and (now - last) < min_interval_seconds:
+                return None
+        return self.mark_chat_read(chat_id)
 
     def delete_chat(self, chat_id: str):
         resp = self.client.delete(f"/chats/{chat_id}")
@@ -418,6 +442,45 @@ class KyunAPI:
         resp = self.client.post(f"/chats/{chat_id}/disableUltraPrivateMode")
         resp.raise_for_status()
         return resp.status_code
+
+    def _chat_ws_url(self, chat_id: str) -> str:
+        return f"wss://api.kyun.sh/chats/{chat_id}"
+
+    def _chats_ws_url(self) -> str:
+        return "wss://api.kyun.sh/chats"
+
+    def _ws_handshake_headers(self) -> list[str]:
+        headers = [f"X-Auth-Token: {self._get_auth_token()}"]
+        otp = self.headers.get("X-OTP-Code")
+        if otp:
+            headers.append(f"X-OTP-Code: {otp}")
+        return headers
+
+    def open_chat_ws(self, chat_id: str):
+        return websocket.create_connection(
+            self._chat_ws_url(chat_id),
+            header=self._ws_handshake_headers(),
+            timeout=10,
+        )
+
+    def open_chats_ws(self):
+        return websocket.create_connection(
+            self._chats_ws_url(),
+            header=self._ws_handshake_headers(),
+            timeout=10,
+        )
+
+    def recv_chat_ws(self, ws):
+        raw = ws.recv()
+        if not raw:
+            return None
+        return json.loads(raw)
+
+    def send_chat_ws(self, ws, content: str):
+        ws.send(json.dumps({"content": content}))
+
+    def close_chat_ws(self, ws):
+        ws.close()
 
     def get_otp_status(self):
         resp = self.client.get("/user/otp")

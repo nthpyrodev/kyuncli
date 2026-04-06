@@ -1,7 +1,7 @@
 # Kyun CLI (Beta)
 
 A command-line interface for using [kyun.sh](https://kyun.sh).  
-> **Note:** This project is currently in **beta**. Stripe payments are not yet supported.
+> **Note:** This project is currently in **beta**. Use the website for Stripe payments.
 
 ---
 
@@ -72,6 +72,15 @@ source .venv/bin/activate
 pip install -e .
 ```
 
+### Shell Autocompletion (Linux)
+
+Enable tab completion using:
+
+```bash
+echo 'eval "$(_KYUN_COMPLETE=bash_source kyun)"' >> ~/.bashrc
+source ~/.bashrc
+```
+
 ### Dependencies
 
 - `click`
@@ -80,6 +89,7 @@ pip install -e .
 - `qrcode`
 - `keyring`
 - `platformdirs`
+- `websocket-client`
 
 ## Usage
 
@@ -101,7 +111,7 @@ kyun account list
 # Check balance
 kyun account balance
 
-# Remove an account (non-destructive, just removes it locally)
+# Remove an account (does not delete your account, just removes it locally)
 kyun account remove <hash>
 ```
 
@@ -368,14 +378,17 @@ kyun deposit status <deposit_id>
 # List all chats
 kyun chat list
 
-# Create new chat
-kyun chat create
+# Start new chat
+kyun chat start
 
-# Create chat using ultra private mode
-kyun chat create --private
+# Start chat using ultra private mode
+kyun chat start --private
 
-# View chat messages
+# Open live chat session
 kyun chat open <chat_id>
+
+# Use commands inside live chat session:
+# /help
 
 # Delete chat
 kyun chat delete <chat_id>
@@ -404,12 +417,7 @@ The config file stores:
 - Account hash
 - User ID
 
-## Issues
-
-If you find a bug, want to request a feature, or anything else, please send me a message using any of my contact methods
-
 ## TODO
 
 - [ ] Add Stripe support
 - [ ] Add serial access
-- [ ] Allow sending chat messages

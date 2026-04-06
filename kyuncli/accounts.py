@@ -3,10 +3,15 @@ import hashlib
 import time
 import secrets
 import base64
+import re
 import qrcode
 from .api import KyunAPI
 from .config import add_or_update_account, set_active_account, remove_account, list_accounts, get_active_account
 from .utils import get_api_client
+
+MIN_PASSWORD_LEN = 5
+MIN_SSH_KEY_LEN = 32
+TELEGRAM_LINK_CODE = re.compile(r"^[A-Za-z0-9]{6}$")
 
 
 def solve_pow(challenge: str, difficulty: int) -> str:
@@ -38,6 +43,10 @@ def account(ctx):
 @click.option("--label", prompt="Label for new API key", default="kyuncli-key", help="Label to assign to the created API key")
 def create(password, label):
     """Create a new Kyun account."""
+    if len(password) < MIN_PASSWORD_LEN:
+        click.echo("Invalid password: must be at least 5 characters.")
+        return
+
     try:
         click.echo("Creating new account...")
         click.echo("Fetching proof-of-work challenge...")
@@ -77,23 +86,32 @@ def create(password, label):
             click.echo(f"Account creation failed: {error_msg}")
 
 @account.command()
-@click.option("--hash", prompt=True, hide_input=False, help="Your account hash")
+@click.argument("hash_arg", required=False)
+@click.option("--hash", "hash_opt", help="Your account hash")
 @click.option("--password", prompt=True, hide_input=True, help="Your account password")
 @click.option("--label", prompt="Label for new API key", default="kyuncli-key", help="Label to assign to the created API key")
 @click.option("--otp", prompt="OTP code (if 2FA enabled)", default="", show_default=False, help="OTP code if your account has 2FA enabled")
-def login(hash, password, otp, label):
+def login(hash_arg, hash_opt, password, otp, label):
     """Login to account and create API key."""
+    hash_value = hash_arg or hash_opt
+    if not hash_value:
+        hash_value = click.prompt("Your account hash", hide_input=False)
+
+    if len(password) < MIN_PASSWORD_LEN:
+        click.echo("Invalid password: must be at least 5 characters.")
+        return
+
     try:
         api_temp = KyunAPI(temp_token=None)
-        token = api_temp.login(hash, password, otp if otp else None)
+        token = api_temp.login(hash_value, password, otp if otp else None)
         api_with_token = KyunAPI(temp_token=token)
         api_key = api_with_token.create_api_key(label)
         
         user_info = api_with_token.get_user_info()
         user_id = user_info["id"]
         
-        add_or_update_account(hash, api_key, user_id)
-        click.echo(f"Login complete. API key saved and active for {hash.upper()}.")
+        add_or_update_account(hash_value, api_key, user_id)
+        click.echo(f"Login complete. API key saved and active for {hash_value.upper()}.")
     except Exception as e:
         error_msg = str(e)
         if "401" in error_msg:
@@ -111,9 +129,13 @@ def login(hash, password, otp, label):
             click.echo(f"Login failed: {error_msg}")
 
 @account.command()
-@click.argument("hash_")
+@click.argument("hash_", required=False)
 def switch(hash_):
     """Switch active account."""
+    if not hash_:
+        click.echo("Please provide an account hash. Example: kyun account switch <hash>")
+        return
+
     found = set_active_account(hash_)
     if found:
         click.echo(f"Switched active account to {hash_.upper()}.")
@@ -133,14 +155,27 @@ def account_list():
         click.echo(f" {status} {acc['hash']}")
 
 @account.command()
-@click.argument("hash_")
+@click.argument("hash_", required=False)
 def remove(hash_):
     """Remove a stored account."""
-    success = remove_account(hash_)
+    target_hash = hash_
+
+    if not target_hash:
+        active_account = get_active_account()
+        if not active_account:
+            click.echo("Please provide an account hash, or set an active account first.")
+            return
+
+        target_hash = active_account["hash"]
+        if not click.confirm(f"No hash provided. Remove active account {target_hash}?", default=False):
+            click.echo("Cancelled.")
+            return
+
+    success = remove_account(target_hash)
     if success:
-        click.echo(f"Removed account {hash_}.")
+        click.echo(f"Removed account {target_hash}.")
     else:
-        click.echo(f"Account {hash_} not found.")
+        click.echo(f"Account {target_hash} not found.")
 
 @account.command()
 def balance():
@@ -320,6 +355,10 @@ def ssh_add(name, algo, key, file):
     if algo and not key.startswith(algo):
         key = f"{algo} {key}"
 
+    if len(key.strip()) < MIN_SSH_KEY_LEN:
+        click.echo("Invalid SSH key.")
+        return
+
     try:
         key_id = api.add_user_ssh_key(key, name)
         click.echo(f"SSH key added with ID: {key_id}")
@@ -397,6 +436,13 @@ def contact_update(email, matrix):
         click.echo("Provide --email and/or --matrix.")
         return
 
+    if email is not None and ("@" not in email or "." not in email):
+        click.echo("Invalid email address.")
+        return
+    if matrix is not None and ("@" not in matrix or "." not in matrix or ":" not in matrix):
+        click.echo("Invalid Matrix account.")
+        return
+
     api = get_api_client()
     if not api:
         return
@@ -428,6 +474,10 @@ def contact_telegram(ctx):
 @click.option("--code", prompt=True, help="Link code from @KyunNotificationsBot")
 def telegram_link(code):
     """Link your Telegram using the code from @KyunNotificationsBot."""
+    if not TELEGRAM_LINK_CODE.fullmatch(code):
+        click.echo("Invalid Telegram link code.")
+        return
+
     api = get_api_client()
     if not api:
         return

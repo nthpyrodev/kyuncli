@@ -30,8 +30,8 @@ def danbo_list():
         return
 
     click.echo(
-        f"{'ID':<15} {'Name':<20} {'Price (€)':<12} {'Next Cycle':<28} "
-        f"{'Cancelled':<10} {'Suspended':<10} {'Uptime (hrs)':<14} {'Datacenter':<15} {'Primary IP':<20}"
+        f"{'ID':<25} {'Name':<20} {'Price (€)':<12} {'Next Cycle':<20} "
+        f"{'Cancelled':<12} {'Suspended':<12} {'Uptime (hrs)':<12} {'Datacenter':<12} {'Primary IP':<20}"
     )
     click.echo("-" * 148)
 
@@ -43,31 +43,31 @@ def danbo_list():
             if next_cycle else "N/A"
         )
         if is_cancelled and next_cycle:
-            cycle_display = f"{next_cycle_fmt} (cancels)"
+            cycle_display = f"{next_cycle_fmt}"
         else:
             cycle_display = next_cycle_fmt
         uptime_hrs = round(d.get("uptime", 0) / 3600, 2)
+        if abs(uptime_hrs) < 0.01:
+            uptime_hrs = 0
 
         try:
             ips = api.get_danbo_ips(d["id"])
             primary_ip_obj = next((ip for ip in ips if ip.get("primary")), None)
             primary_ip = primary_ip_obj["ip"] if primary_ip_obj else "N/A"
-            ip_price = sum(ip.get("price", 0) for ip in ips)
         except Exception:
             primary_ip = "N/A"
-            ip_price = 0
 
-        total_price = format_eur(d.get("price", 0) + ip_price)
+        total_price = format_eur(d.get("price", 0))
 
         click.echo(
-            f"{d.get('id', 'N/A'):<15} "
+            f"{d.get('id', 'N/A'):<25} "
             f"{d.get('name', 'N/A'):<20} "
             f"{total_price:<12} "
-            f"{cycle_display:<28} "
-            f"{str(is_cancelled):<10} "
-            f"{str(d.get('suspended', False)):<10} "
-            f"{uptime_hrs:<14} "
-            f"{d.get('datacenter', 'N/A'):<15} "
+            f"{cycle_display:<20} "
+            f"{str(is_cancelled):<12} "
+            f"{str(d.get('suspended', False)):<12} "
+            f"{uptime_hrs:<12} "
+            f"{d.get('datacenter', 'N/A'):<12} "
             f"{primary_ip:<20}"
         )
 
@@ -190,9 +190,11 @@ def danbo_get(danbo_id):
         if next_cycle else "N/A"
     )
 
-    price_base = d.get("price", 0)
-    ip_price = sum(ip.get("price", 0) for ip in ips) if ips else 0
-    total_price = format_eur(price_base + ip_price)
+    price_excl_ips_cents = d.get("price", 0) or 0
+    ip_price_cents = sum(ip.get("price", 0) for ip in ips) if ips else 0
+    price_incl_ips_cents = price_excl_ips_cents + ip_price_cents
+    price_excl_ips = format_eur(price_excl_ips_cents)
+    price_incl_ips = format_eur(price_incl_ips_cents)
 
     click.echo("=" * 60)
     click.echo(f"Danbo ID       : {d.get('id', 'N/A')}")
@@ -200,7 +202,8 @@ def danbo_get(danbo_id):
     click.echo(f"Datacenter     : {d.get('datacenter', 'N/A')}")
     click.echo(f"Node Hostname  : {d.get('nodeHostname', 'N/A')}")
     click.echo(f"VM ID          : {d.get('vmId', 'N/A')}")
-    click.echo(f"Price          : {total_price}")
+    click.echo(f"Price excl IPs : {price_excl_ips}")
+    click.echo(f"Price incl IPs : {price_incl_ips}")
     click.echo(f"Next Cycle     : {next_cycle_fmt}")
     if d.get("suspended", False):
         suspended_at = d.get("suspendedAt")
