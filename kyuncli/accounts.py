@@ -39,10 +39,16 @@ def account(ctx):
         click.echo(ctx.get_help())
 
 @account.command()
-@click.option("--password", prompt=True, hide_input=True, confirmation_prompt=True, help="Password for the new account")
-@click.option("--label", prompt="Label for new API key", default="kyuncli-key", help="Label to assign to the created API key")
-def create(password, label):
+@click.option("--label", default=None, help="Label to assign to the created API key")
+def create(label):
     """Create a new Kyun account."""
+    password = click.prompt(
+        "Password for the new account",
+        hide_input=True,
+        confirmation_prompt=True,
+    )
+    if label is None:
+        label = click.prompt("Label for new API key", default="kyuncli-key", show_default=True)
     if len(password) < MIN_PASSWORD_LEN:
         click.echo("Invalid password: must be at least 5 characters.")
         return
@@ -88,14 +94,19 @@ def create(password, label):
 @account.command()
 @click.argument("hash_arg", required=False)
 @click.option("--hash", "hash_opt", help="Your account hash")
-@click.option("--password", prompt=True, hide_input=True, help="Your account password")
-@click.option("--label", prompt="Label for new API key", default="kyuncli-key", help="Label to assign to the created API key")
-@click.option("--otp", prompt="OTP code (if 2FA enabled)", default="", show_default=False, help="OTP code if your account has 2FA enabled")
-def login(hash_arg, hash_opt, password, otp, label):
+@click.option("--label", default=None, help="Label to assign to the created API key")
+@click.option("--otp", default=None, show_default=False, help="OTP code if your account has 2FA enabled")
+def login(hash_arg, hash_opt, otp, label):
     """Login to account and create API key."""
     hash_value = hash_arg or hash_opt
     if not hash_value:
         hash_value = click.prompt("Your account hash", hide_input=False)
+
+    password = click.prompt("Your account password", hide_input=True)
+    if label is None:
+        label = click.prompt("Label for new API key", default="kyuncli-key", show_default=True)
+    if otp is None:
+        otp = click.prompt("OTP code (if 2FA enabled)", default="", show_default=False)
 
     if len(password) < MIN_PASSWORD_LEN:
         click.echo("Invalid password: must be at least 5 characters.")

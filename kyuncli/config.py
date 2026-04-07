@@ -90,7 +90,8 @@ def add_or_update_account(hash_: str, api_key: str, user_id: str):
         new_account = {
             "hash": hash_,
             "user_id": user_id,
-            "active": True
+            "active": True,
+            "is_stripe_setup": False,
         }
         config["accounts"].append(new_account)
     
@@ -142,6 +143,24 @@ def list_accounts() -> list[dict]:
 def get_current_user_id() -> str:
     active_account = get_active_account()
     return active_account["user_id"]
+
+
+def is_stripe_setup_acknowledged(hash_: str) -> bool:
+    hash_ = hash_.upper()
+    for acc in load_config().get("accounts", []):
+        if acc["hash"] == hash_:
+            return bool(acc.get("is_stripe_setup", False))
+    return False
+
+
+def set_stripe_setup_acknowledged(hash_: str) -> None:
+    hash_ = hash_.upper()
+    config = load_config()
+    for acc in config["accounts"]:
+        if acc["hash"] == hash_:
+            acc["is_stripe_setup"] = True
+            save_config(config)
+            return
 
 def show_migration_message(hash_: str):
     click.echo(f"Account {hash_} is storing API key in config.json file.")

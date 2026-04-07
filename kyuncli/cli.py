@@ -4,6 +4,7 @@ from .deposits import deposit
 from .danbos import danbo
 from .bricks import brick
 from .chat import chat
+from .stripe import stripe
 from .version import get_version
 
 
@@ -20,6 +21,7 @@ def cli(ctx):
 
 cli.add_command(account)
 cli.add_command(deposit)
+cli.add_command(stripe)
 cli.add_command(danbo)
 cli.add_command(brick)
 cli.add_command(chat)

@@ -20,10 +20,12 @@ def print_deposit_info(deposit: dict, deposit_id: str | None = None, status: dic
     click.echo(f"Created    : {created_at_fmt}")
     click.echo(f"XMR        : {xmr}")
     click.echo(f"EUR        : {format_eur(eur)}")
-    click.echo(f"Address    : {address}")
+    click.echo(f"XMR Address: {address}")
+
+    monero_uri = f"monero:{address}?tx_amount={xmr}"
 
     qr = qrcode.QRCode()
-    qr.add_data(address)
+    qr.add_data(monero_uri)
     qr.make(fit=True)
     qr.print_ascii(tty=True)
 
@@ -39,7 +41,7 @@ def print_deposit_info(deposit: dict, deposit_id: str | None = None, status: dic
 @click.group(invoke_without_command=True)
 @click.pass_context
 def deposit(ctx):
-    """Manage deposits."""
+    """Topup account balance with Monero."""
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
 

@@ -1,7 +1,7 @@
 # Kyun CLI (Beta)
 
 A command-line interface for using [kyun.sh](https://kyun.sh).  
-> **Note:** This project is currently in **beta**. Use the website for Stripe payments.
+> **Note:** This project is currently in **beta**.
 
 ---
 
@@ -353,7 +353,7 @@ kyun brick delete <brick_id>
 kyun brick unsuspend <brick_id>
 ```
 
-### Deposit Management
+### Monero Deposit Management
 
 ```bash
 # View exchange rates
@@ -370,6 +370,28 @@ kyun deposit get <deposit_id>
 
 # Check deposit status
 kyun deposit status <deposit_id>
+```
+
+### Stripe Billing Management
+
+```bash
+# Add a payment method
+kyun stripe addcard
+
+# Don't open in browser automatically
+kyun stripe addcard --url-only
+
+# Show QR code
+kyun stripe addcard --qr
+
+# Stripe customer portal (general billing including invoices and payment methods)
+kyun stripe portal
+
+# Don't open in browser automatically
+kyun stripe portal --url-only
+
+# Show QR code
+kyun stripe portal --qr
 ```
 
 ### Support Chat
@@ -412,12 +434,3 @@ Account info is stored in a config file:
 - **Linux**: `~/.config/kyuncli/config.json`
 - **macOS**: `~/Library/Application Support/kyuncli/config.json`
 - **Windows**: `%APPDATA%\kyuncli\config.json`
-
-The config file stores:
-- Account hash
-- User ID
-
-## TODO
-
-- [ ] Add Stripe support
-- [ ] Add serial access

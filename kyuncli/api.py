@@ -106,6 +106,16 @@ class KyunAPI:
         resp.raise_for_status()
         return resp.status_code
 
+    def get_stripe_setup_url(self, return_url: str) -> str:
+        resp = self.client.get("/user/stripeSessions/setup", params={"returnUrl": return_url})
+        resp.raise_for_status()
+        return resp.text.strip()
+
+    def get_stripe_portal_url(self) -> str:
+        resp = self.client.get("/user/stripeSessions/portal")
+        resp.raise_for_status()
+        return resp.text.strip()
+
     def link_telegram(self, code: str):
         resp = self.client.put("/user/contact/telegram", json=code)
         resp.raise_for_status()
