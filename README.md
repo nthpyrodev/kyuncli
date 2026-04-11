@@ -7,11 +7,11 @@ A command-line interface for using [kyun.sh](https://kyun.sh).
 
 ## Installation
 
-> The following assumes you are on Linux. You will need to change some commands if on Windows or macOS.
+> The following assumes you are on Linux. Windows is not supported yet.
 
 ### Install from PyPI (Recommended)
 
-Install with [pipx](https://pipx.pypa.io):
+Install with pipx:
 
 ```bash
 sudo apt install pipx
@@ -81,16 +81,6 @@ echo 'eval "$(_KYUN_COMPLETE=bash_source kyun)"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
-### Dependencies
-
-- `click`
-- `httpx`
-- `requests`
-- `qrcode`
-- `keyring`
-- `platformdirs`
-- `websocket-client`
-
 ## Usage
 
 ### Account Management
@@ -99,7 +89,7 @@ source ~/.bashrc
 # Create a new account
 kyun account create
 
-# Login to your account to create the API to use
+# Login to your account and create the API to use
 kyun account login
 
 # Switch between accounts
@@ -169,54 +159,54 @@ kyun account otp enable
 kyun account otp disable
 ```
 
-### Danbo Management
+### danbo Management
 
 ```bash
-# List all Danbos
+# List all danbos
 kyun danbo list
 
-# Get detailed Danbo info
+# Get detailed danbo info
 kyun danbo get <danbo_id>
 
-# Buy a new Danbo
+# Buy a new danbo
 kyun danbo buy
 
-# Rename a Danbo
+# Rename a danbo
 kyun danbo rename <danbo_id> "New Name"
 
-# View Danbo resource usage statistics
+# View danbo resource usage statistics
 kyun danbo stats <danbo_id>
 
 # View stats for last 60 minutes
 kyun danbo stats <danbo_id> --minutes 60
 
-# Delete a Danbo (Irreversible)
+# Delete a danbo (Irreversible)
 kyun danbo manage delete <danbo_id>
 
-# Cancel a Danbo (deleted on next renewal)
+# Cancel a danbo (deleted on next renewal)
 kyun danbo manage cancel <danbo_id>
 
-# Cancel a Danbo with 2FA code
+# Cancel a danbo with 2FA code
 kyun danbo manage cancel <danbo_id>
 ```
 
-### Danbo Power Management
+### danbo Power Management
 
 ```bash
-# Start a Danbo
+# Start a danbo
 kyun danbo power start <danbo_id>
 
-# Stop a Danbo
+# Stop a danbo
 kyun danbo power stop <danbo_id>
 
-# Reboot a Danbo
+# Reboot a danbo
 kyun danbo power reboot <danbo_id>
 
 # Graceful shutdown
 kyun danbo power shutdown <danbo_id>
 ```
 
-### Danbo Specs Management
+### danbo Specs Management
 
 ```bash
 # View current specs
@@ -229,7 +219,7 @@ kyun danbo specs max-upgrade <danbo_id>
 kyun danbo specs change <danbo_id>
 ```
 
-### Danbo IP Management
+### danbo IP Management
 
 ```bash
 # Show danbo information
@@ -254,7 +244,7 @@ kyun danbo ip rdns add <danbo_id> <ip_address> <domain>
 kyun danbo ip rdns remove <danbo_id> <ip_address> <domain>
 ```
 
-### Danbo SSH Management
+### danbo SSH Management
 
 ```bash
 # View authorized keys
@@ -276,7 +266,7 @@ kyun danbo ssh remove-from-authorized <danbo_id> --key "ssh-rsa AAAAB3.."
 kyun danbo ssh get-host-keys <danbo_id>
 ```
 
-### Danbo Bandwidth Management
+### danbo Bandwidth Management
 
 ```bash
 # Check current bandwidth limit
@@ -289,10 +279,10 @@ kyun danbo bandwidth set <danbo_id> --limit 100
 kyun danbo bandwidth clear <danbo_id>
 ```
 
-### Danbo OS Management
+### danbo OS Management
 
 ```bash
-# Install an OS on a Danbo
+# Install an OS on a danbo
 kyun danbo os install <danbo_id>
 
 # Get the installed OS name
@@ -302,7 +292,7 @@ kyun danbo os get <danbo_id>
 kyun danbo os set <danbo_id> "Debian 12 Bookworm"
 ```
 
-### Danbo Subdomain Management
+### danbo Subdomain Management
 
 ```bash
 # List subdomains
@@ -315,16 +305,16 @@ kyun danbo subdomains create <danbo_id> --name "subdomain" --domain "kyun.li" --
 kyun danbo subdomains delete <danbo_id> <subdomain_id>
 ```
 
-### Danbo Brick Management
+### danbo Brick Management
 
 ```bash
 # List attached Bricks
 kyun danbo bricks list <danbo_id>
 
-# Attach Brick to Danbo
+# Attach Brick to danbo
 kyun danbo bricks attach <danbo_id> <brick_id>
 
-# Detach Brick from Danbo
+# Detach Brick from danbo
 kyun danbo bricks detach <danbo_id> <brick_id>
 ```
 
@@ -425,6 +415,48 @@ kyun chat privacy enable <chat_id>
 kyun chat privacy disable <chat_id>
 ```
 
+### Notifications
+
+```bash
+
+# Use --all to enable/disable for all accounts, or --hash to specify a specific account, otherwise defaults to currently active account.
+# Just enabling a notification type will not allow it to run immediately, make sure you have run kyun notify cron install.
+# No need to rerun kyun notify cron install after enabling/disabling notification type.
+
+# Notify when a danbo is suspended
+kyun notify danbo suspend enable
+
+# Notify if balance is too low at specified hours ahead of a danbo renewal, default is one notification 72 hours in advance
+kyun notify danbo renewal enable --hours-before 72 --hours-before 24
+
+# Notify if balance is too low at specified hours ahead of a brick renewal, default is one notification 72 hours in advance
+kyun notify brick renewal enable --hours-before 96 --hours-before 36
+
+# Notify when a brick is suspended
+kyun notify brick suspend enable
+
+# Notify on new livechat message
+kyun notify chat enable
+
+# Change how many hours in advance of insufficient balance for renewal you are notified (replaces previous)
+kyun notify danbo renewal hours 72 24
+
+# Change how many hours in advance of insufficient balance for renewal you are notified (replaces previous)
+kyun notify brick renewal hours 72
+
+# Show which notification types are set for all accounts added to kyuncli
+kyun notify status
+
+# Manually run all enabled notification checks
+kyun notify run
+
+# Run notification checks every 5 minutes
+kyun notify cron install
+
+# Remove notification check entry from cron
+kyun notify cron remove
+```
+
 ## Configuration
 
 ### Config File Location
@@ -433,4 +465,3 @@ Account info is stored in a config file:
 
 - **Linux**: `~/.config/kyuncli/config.json`
 - **macOS**: `~/Library/Application Support/kyuncli/config.json`
-- **Windows**: `%APPDATA%\kyuncli\config.json`

@@ -1,9 +1,10 @@
 import click
 from .accounts import account
-from .deposits import deposit
-from .danbos import danbo
 from .bricks import brick
 from .chat import chat
+from .danbos import danbo
+from .deposits import deposit
+from .notify import notify
 from .stripe import stripe
 from .version import get_version
 
@@ -20,11 +21,12 @@ def cli(ctx):
         click.echo(ctx.get_help())
 
 cli.add_command(account)
-cli.add_command(deposit)
-cli.add_command(stripe)
-cli.add_command(danbo)
 cli.add_command(brick)
 cli.add_command(chat)
+cli.add_command(danbo)
+cli.add_command(deposit)
+cli.add_command(notify)
+cli.add_command(stripe)
 
 if __name__ == "__main__":
     cli()

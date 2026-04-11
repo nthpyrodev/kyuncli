@@ -5,7 +5,7 @@ import termios
 import tty
 from collections import deque
 from datetime import datetime
-from .utils import get_api_client
+from .utils import get_api_client, is_chat_unread
 from .config import get_current_user_id
 
 
@@ -26,22 +26,6 @@ def _require_chat_id(chat_id: str | None, command_example: str) -> str | None:
         return chat_id
     click.echo(f"Please provide a chat ID. Example: {command_example}")
     return None
-
-def _is_chat_unread(chat: dict) -> bool:
-    if "unread" in chat:
-        return bool(chat.get("unread"))
-    if "unreadCount" in chat:
-        return int(chat.get("unreadCount") or 0) > 0
-    if "readByUser" in chat:
-        return not bool(chat.get("readByUser"))
-    if "isRead" in chat:
-        return not bool(chat.get("isRead"))
-    if "read" in chat:
-        return not bool(chat.get("read"))
-    if "readAt" in chat:
-        return not bool(chat.get("readAt"))
-    return False
-
 
 def _print_live_commands():
     click.echo("Commands:")
@@ -175,7 +159,7 @@ def chat_list():
             chat_id = chat.get('id', 'N/A')
             name = chat.get('name') or 'Unnamed'
             updated = chat.get('updatedAt', '')
-            unread = "Yes" if _is_chat_unread(chat) else "No"
+            unread = "Yes" if is_chat_unread(chat) else "No"
             
             last_msg = chat.get('lastMessage')
             if last_msg:
@@ -229,6 +213,10 @@ def chat_open(chat_id):
     api = get_api_client()
     if not api:
         return
+    try:
+        api.mark_chat_read_throttled(chat_id, force=True)
+    except Exception:
+        pass
 
     try:
         ws = None

@@ -10,16 +10,20 @@ def format_eur(value: int | float) -> str:
     return f"€{value / 100:.2f}"
 
 
+def kyun_api_from_account(acc: dict) -> KyunAPI | None:
+    api_key = acc.get("api_key")
+    if not api_key:
+        return None
+    if acc.get("_json_api"):
+        show_migration_message(acc["hash"])
+    return KyunAPI(api_key=api_key)
+
 def get_api_client() -> KyunAPI | None:
     active = get_active_account()
     if not active:
         click.echo("No active account.")
         return None
-    
-    if active.get("_json_api"):
-        show_migration_message(active["hash"])
-    
-    return KyunAPI(api_key=active["api_key"])
+    return kyun_api_from_account(active)
 
 
 def calculate_prorated_cost(full_monthly_cost_cents: int, next_cycle: str) -> int:
@@ -66,7 +70,6 @@ def get_time_remaining_str(next_cycle: str) -> str:
     except Exception:
         return "Unknown"
 
-
 def format_bytes(bytes_value: float) -> str:
     if bytes_value is None:
         return "0 B"
@@ -83,6 +86,9 @@ def format_percentage(value: float) -> str:
         return "0.00%"
     return f"{value:.2f}%"
 
+
+def is_chat_unread(chat: dict) -> bool:
+    return not bool(chat.get("readByUser", True))
 
 def check_balance(api: KyunAPI, required_cents: int) -> bool:
     try:

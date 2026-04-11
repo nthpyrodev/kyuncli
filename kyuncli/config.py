@@ -1,3 +1,4 @@
+import copy
 import json
 import keyring
 import click
@@ -6,6 +7,14 @@ from platformdirs import user_config_dir
 
 CONFIG_PATH = Path(user_config_dir("kyuncli"))
 CONFIG_FILE = CONFIG_PATH / "config.json"
+
+DEFAULT_NOTIFY_CONFIG = {
+    "danbo_renewal": {"enabled": False, "hours_before": [72]},
+    "danbo_suspended": {"enabled": False},
+    "brick_renewal": {"enabled": False, "hours_before": [72]},
+    "brick_suspended": {"enabled": False},
+    "chat": {"enabled": False},
+}
 
 KEYRING_SERVICE = "kyuncli"
 
@@ -39,12 +48,12 @@ def get_active_account() -> dict | None:
             account_hash = acc["hash"]
             
             api_key = get_api_key_from_keyring(account_hash)
-            
-            json_api_key= False
+
+            json_api_key = False
             if api_key is None and "api_key" in acc:
                 api_key = acc["api_key"]
                 json_api_key = True
-            
+
             result = {
                 "hash": acc["hash"],
                 "user_id": acc["user_id"],
@@ -53,7 +62,7 @@ def get_active_account() -> dict | None:
             }
             if json_api_key:
                 result["_json_api"] = True
-            
+
             return result
     return None
 
@@ -120,12 +129,12 @@ def list_accounts() -> list[dict]:
         account_hash = acc["hash"]
         
         api_key = get_api_key_from_keyring(account_hash)
-        
+
         json_api_key = False
         if api_key is None and "api_key" in acc:
             api_key = acc["api_key"]
             json_api_key = True
-        
+
         account_dict = {
             "hash": acc["hash"],
             "user_id": acc["user_id"],
@@ -135,9 +144,9 @@ def list_accounts() -> list[dict]:
         
         if json_api_key:
             account_dict["_json_api"] = True
-        
+
         accounts.append(account_dict)
-    
+
     return accounts
 
 def get_current_user_id() -> str:
@@ -166,3 +175,65 @@ def show_migration_message(hash_: str):
     click.echo(f"Account {hash_} is storing API key in config.json file.")
     click.echo("Please move API key to system keyring by running:")
     click.echo(f"kyun account login --hash {hash_}")
+
+
+def _merge_nested_dicts(base: dict, patch: dict) -> dict:
+    out = dict(base)
+    for k, v in patch.items():
+        if isinstance(v, dict) and isinstance(out.get(k), dict):
+            out[k] = _merge_nested_dicts(out[k], v)
+        else:
+            out[k] = v
+    return out
+
+
+def hours_before_thresholds(hours: list | tuple | None) -> list[int]:
+    default = [72]
+    if hours is None:
+        return default
+    if not isinstance(hours, (list, tuple)) or len(hours) == 0:
+        return default
+    out = sorted({h for h in hours if isinstance(h, int) and not isinstance(h, bool) and h > 0})
+    return out or default
+
+
+def get_notify_config(hash_: str) -> dict:
+    hash_ = hash_.upper()
+    base = copy.deepcopy(DEFAULT_NOTIFY_CONFIG)
+    for acc in load_config().get("accounts", []):
+        if acc["hash"] == hash_:
+            merged = _merge_nested_dicts(base, acc.get("notify") or {})
+            merged.pop("enabled", None)
+            for key in ("danbo_renewal", "brick_renewal"):
+                sub = merged.get(key)
+                if isinstance(sub, dict) and "hours_before" in sub:
+                    sub["hours_before"] = hours_before_thresholds(sub["hours_before"])
+            return merged
+    return base
+
+
+def notify_subtype_enabled(nc: dict, key: str) -> bool:
+    return bool((nc.get(key) or {}).get("enabled"))
+
+
+def account_has_any_notify_enabled(nc: dict) -> bool:
+    for key in ("danbo_renewal", "danbo_suspended", "brick_renewal", "brick_suspended", "chat"):
+        if notify_subtype_enabled(nc, key):
+            return True
+    return False
+
+
+def set_notify_config(hash_: str, updates: dict) -> bool:
+    hash_ = hash_.upper()
+    config = load_config()
+    for acc in config["accounts"]:
+        if acc["hash"] == hash_:
+            merged = _merge_nested_dicts(
+                _merge_nested_dicts(copy.deepcopy(DEFAULT_NOTIFY_CONFIG), acc.get("notify") or {}),
+                updates,
+            )
+            merged.pop("enabled", None)
+            acc["notify"] = merged
+            save_config(config)
+            return True
+    return False
